@@ -58,20 +58,42 @@ Comprehensive documentation is organized in the [`docs/`](docs/) directory:
 
 ### 1. Using Docker Compose (Recommended)
 
-Clone the repository and prepare your configuration:
+1. Clone the repository and build the container image:
+
+```bash
+docker build -t ubnt-exporter:latest .
+```
+
+2. Prepare your configuration files:
 
 ```bash
 cp config.yaml.example config.yaml
 cp system.yaml.example system.yaml
 ```
 
-Edit `config.yaml` with your radio IP addresses and credentials, then launch the service:
+3. Create your local `docker-compose.yml` (see [Docker Compose deployment](docs/exporter.md#docker-compose)):
+
+```yaml
+services:
+  ubnt-exporter:
+    image: ubnt-exporter:latest
+    container_name: ubnt-exporter
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./system.yaml:/app/system.yaml:ro
+    command: ["run"]
+```
+
+4. Edit `config.yaml` with your radio IP addresses and credentials, then launch the service:
 
 ```bash
 docker compose up -d
 ```
 
-Verify metrics output:
+5. Verify metrics output:
 
 ```bash
 # Verify Ubiquiti wireless and system metrics

@@ -43,7 +43,7 @@ Please **do not** report security vulnerabilities through public GitHub issues, 
 Report vulnerabilities privately using GitHub **Private Vulnerability Reporting**:
 
 1. Open the **Security** tab of this repository.
-2. Select **Report a vulnerability** under **Advisories** (or open [New Security Advisory](../../security/advisories/new) directly).
+2. Select **Report a vulnerability** under **Advisories** (or open [New Security Advisory](https://github.com/savitarMK/ubnt-exporter/security/advisories/new) directly).
 3. Complete the advisory form with the details described below.
 
 If Private Vulnerability Reporting is unavailable, contact the maintainer privately using the contact information on the maintainer's GitHub profile and request a secure channel before sharing technical details.
@@ -153,7 +153,7 @@ Operators should understand the following characteristics of the current release
 ### 5. Container and Runtime Hardening
 
 - The official image already runs as the unprivileged user `appuser` (UID `1000`). Do not override it with `root`.
-- Mount configuration files read-only (`./config.yaml:/app/config.yaml:ro`), as shown in [docs/exporter.md](docs/exporter.md#docker-compose).
+- Mount configuration files read-only (`./config.yaml:/app/config.yaml:ro`), as shown in [docs/exporter.md](../docs/exporter.md#docker-compose).
 - Apply additional runtime restrictions where your platform supports them:
 
   ```yaml
@@ -169,7 +169,7 @@ Operators should understand the following characteristics of the current release
   ```
 
 - For Kubernetes, set `runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, and drop all capabilities in the container `securityContext`.
-- For systemd deployments, use the hardening directives documented in [docs/exporter.md](docs/exporter.md#systemd-service-unit).
+- For systemd deployments, use the hardening directives documented in [docs/exporter.md](../docs/exporter.md#systemd-service-unit).
 
 ### 6. Logging
 
