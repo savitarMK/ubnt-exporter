@@ -14,6 +14,7 @@ README.md
 LICENSE
 docker-compose.yml
 *.txt
+curl*
 
 # Compiled binaries and build outputs
 /ubnt-exporter

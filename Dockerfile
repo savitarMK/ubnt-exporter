@@ -1,4 +1,4 @@
-ARG APP_VERSION=1.1.0-beta
+ARG APP_VERSION=1.1.1
 
 FROM golang:1.27.2-bookworm AS builder
 
@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 FROM debian:13.7-slim AS runner
 
-ARG APP_VERSION=1.1.0-beta
+ARG APP_VERSION=1.1.1
 
 LABEL org.opencontainers.image.title="ubnt-exporter" \
       org.opencontainers.image.description="Prometheus exporter for Ubiquiti UniFi and airMAX devices" \

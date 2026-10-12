@@ -28,6 +28,7 @@ func TestProcessPeers(t *testing.T) {
 							"model":           "PBE-5AC-Gen2",
 							"family":          "AirMAX AC",
 							"firmwareVersion": "8.7.1",
+							"firmware":        "XC.qca956x.v8.7.1.42832.201209.1309",
 						},
 						"cpu": []any{
 							map[string]any{"usage": 15.0},
@@ -38,16 +39,21 @@ func TestProcessPeers(t *testing.T) {
 							"total": 64000000.0,
 						},
 						"counters": map[string]any{
-							"txRate":  56000.0,
-							"rxRate":  962000.0,
-							"txBytes": 100000.0,
-							"rxBytes": 200000.0,
+							"txRate":    56000.0,
+							"rxRate":    962000.0,
+							"txBytes":   100000.0,
+							"rxBytes":   200000.0,
+							"txPackets": 4926.0,
+							"rxPackets": 5125.0,
+							"txPPS":     1.0,
+							"rxPPS":     2.0,
 						},
 					},
 					"local": []any{
 						map[string]any{
 							"linkQuality": map[string]any{
 								"signal":         -58.0,
+								"snr":            36.0,
 								"idealSignal":    -55.0,
 								"noiseFloor":     -94.0,
 								"signalPerChain": []any{-58.0, -60.0},
@@ -82,6 +88,7 @@ func TestProcessPeers(t *testing.T) {
 							},
 							"linkQuality": map[string]any{
 								"signal":         -62.0,
+								"snr":            31.0,
 								"idealSignal":    -56.0,
 								"noiseFloor":     -93.0,
 								"signalPerChain": []any{-62.0, -63.0},
@@ -178,5 +185,23 @@ func TestProcessPeers(t *testing.T) {
 	}
 	if sink.metrics["peer_info"] != 1.0 {
 		t.Errorf("expected peer_info 1.0, got %v", sink.metrics["peer_info"])
+	}
+	if sink.metrics["peer_snr"] != 36.0 {
+		t.Errorf("expected peer_snr 36.0, got %v", sink.metrics["peer_snr"])
+	}
+	if sink.metrics["peer_remote_snr"] != 31.0 {
+		t.Errorf("expected peer_remote_snr 31.0, got %v", sink.metrics["peer_remote_snr"])
+	}
+	if sink.metrics["peer_tx_packets"] != 4926.0 {
+		t.Errorf("expected peer_tx_packets 4926.0, got %v", sink.metrics["peer_tx_packets"])
+	}
+	if sink.metrics["peer_rx_packets"] != 5125.0 {
+		t.Errorf("expected peer_rx_packets 5125.0, got %v", sink.metrics["peer_rx_packets"])
+	}
+	if sink.metrics["peer_tx_pps"] != 1.0 {
+		t.Errorf("expected peer_tx_pps 1.0, got %v", sink.metrics["peer_tx_pps"])
+	}
+	if sink.metrics["peer_rx_pps"] != 2.0 {
+		t.Errorf("expected peer_rx_pps 2.0, got %v", sink.metrics["peer_rx_pps"])
 	}
 }

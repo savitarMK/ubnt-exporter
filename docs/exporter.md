@@ -171,6 +171,7 @@ All metrics are exposed with the `ubnt_` prefix.
 | `ubnt_ap_service_uptime_seconds` | Gauge | Seconds | Wireless radio service driver uptime in seconds. |
 | `ubnt_ap_signal_dbm` | Gauge | dBm | Average received signal strength at the AP. |
 | `ubnt_ap_noise_floor_dbm` | Gauge | dBm | RF noise floor measured at the operating channel. |
+| `ubnt_ap_snr_db` | Gauge | dB | Signal-to-Noise Ratio (SNR) in dB measured at the AP. |
 | `ubnt_ap_frequency_mhz` | Gauge | MHz | Center radio channel frequency in MHz. |
 | `ubnt_ap_control_frequency_mhz` | Gauge | MHz | Primary control frequency in MHz. |
 | `ubnt_ap_channel_width_mhz` | Gauge | MHz | Channel bandwidth in MHz (e.g. `10`, `20`, `40`, `80`, `100`). |
@@ -187,7 +188,7 @@ Station metrics include the following identification labels: `ap_name`, `ap_ip`,
 
 | Metric Name | Type | Unit | Description |
 | :--- | :--- | :--- | :--- |
-| `ubnt_peer_static_info` | Gauge | Info | Static station metadata: `peer_mac`, `peer_product`, `peer_model`, `peer_family`, `peer_firmware`. Value is `1`. |
+| `ubnt_peer_static_info` | Gauge | Info | Static station metadata: `peer_mac`, `peer_product`, `peer_model`, `peer_family`, `peer_firmware`, `peer_firmware_build`. Value is `1`. |
 | `ubnt_peer_distance_meters` | Gauge | Meters | Estimated physical radio link distance in meters. |
 | `ubnt_peer_uptime_seconds` | Gauge | Seconds | Duration in seconds since this station associated with the AP. |
 | `ubnt_peer_power_time_seconds` | Gauge | Seconds | Station hardware uptime since cold power-on. |
@@ -196,6 +197,7 @@ Station metrics include the following identification labels: `ap_name`, `ap_ip`,
 | `ubnt_peer_ram_free_bytes` | Gauge | Bytes | Station free RAM memory in bytes. |
 | `ubnt_peer_ram_total_bytes` | Gauge | Bytes | Station total RAM memory in bytes. |
 | `ubnt_peer_signal_dbm` | Gauge | dBm | Local signal strength received from the station. |
+| `ubnt_peer_snr_db` | Gauge | dB | Signal-to-Noise Ratio (SNR) in dB measured locally at the AP for this station. |
 | `ubnt_peer_ideal_signal_dbm` | Gauge | dBm | Theoretical ideal signal strength calculated by airOS. |
 | `ubnt_peer_signal_delta_ideal_db` | Gauge | dB | Signal delta between measured and theoretical ideal signal ($S_{\text{real}} - S_{\text{ideal}}$). |
 | `ubnt_peer_noise_floor_dbm` | Gauge | dBm | Local RF noise floor measured for this station's signal. |
@@ -203,6 +205,7 @@ Station metrics include the following identification labels: `ap_name`, `ap_ip`,
 | `ubnt_peer_signal_chain1_dbm` | Gauge | dBm | Local received signal on Chain 1 (opposite polarity). |
 | `ubnt_peer_chain_imbalance_db` | Gauge | dB | Absolute difference between Chain 0 and Chain 1 ($\lvert C_0 - C_1 \rvert$). Values $> 5$ dB indicate antenna misalignment or physical obstructions. |
 | `ubnt_peer_remote_signal_dbm` | Gauge | dBm | Signal strength reported by the remote station radio. |
+| `ubnt_peer_remote_snr_db` | Gauge | dB | Signal-to-Noise Ratio (SNR) in dB reported by the remote station. |
 | `ubnt_peer_remote_ideal_signal_dbm` | Gauge | dBm | Theoretical ideal signal strength calculated at the remote station. |
 | `ubnt_peer_remote_signal_delta_ideal_db` | Gauge | dB | Remote signal delta between measured and theoretical ideal signal. |
 | `ubnt_peer_remote_noise_floor_dbm` | Gauge | dBm | RF noise floor reported by the remote station radio. |
@@ -229,6 +232,10 @@ Station metrics include the following identification labels: `ap_name`, `ap_ip`,
 | `ubnt_peer_rx_rate_mbps` | Gauge | Mbps | Instantaneous negotiated physical reception data rate in Mbps. |
 | `ubnt_peer_rx_bytes_total` | Counter | Bytes | Cumulative octets received from the station. |
 | `ubnt_peer_tx_bytes_total` | Counter | Bytes | Cumulative octets transmitted to the station. |
+| `ubnt_peer_rx_packets_total` | Counter | Packets | Cumulative packets received from the station. |
+| `ubnt_peer_tx_packets_total` | Counter | Packets | Cumulative packets transmitted to the station. |
+| `ubnt_peer_rx_pps` | Gauge | PPS | Instantaneous packet reception rate from the station. |
+| `ubnt_peer_tx_pps` | Gauge | PPS | Instantaneous packet transmission rate to the station. |
 
 ### AirFiber 5XHD Metrics
 

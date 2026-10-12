@@ -125,6 +125,7 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 		}
 
 		addMetric("peer_signal", localLQ, "signal")
+		addMetric("peer_snr", localLQ, "snr")
 		addMetric("peer_ideal_signal", localLQ, "idealSignal")
 		if idealSig := localLQ["idealSignal"]; idealSig != nil {
 			idealVal := utils.SafeFloat(idealSig)
@@ -134,6 +135,7 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 
 		addMetric("peer_noise_floor", localLQ, "noiseFloor")
 		addMetric("peer_remote_signal", remoteLQ, "signal")
+		addMetric("peer_remote_snr", remoteLQ, "snr")
 		addMetric("peer_remote_ideal_signal", remoteLQ, "idealSignal")
 		if remIdealSig := remoteLQ["idealSignal"]; remIdealSig != nil {
 			idealVal := utils.SafeFloat(remIdealSig)
@@ -235,8 +237,12 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 		addMetric("peer_rx_rate", cnt, "rxRate", 0.000001)
 		addMetric("peer_rx_bytes", cnt, "rxBytes")
 		addMetric("peer_tx_bytes", cnt, "txBytes")
+		addMetric("peer_rx_packets", cnt, "rxPackets")
+		addMetric("peer_tx_packets", cnt, "txPackets")
+		addMetric("peer_rx_pps", cnt, "rxPPS")
+		addMetric("peer_tx_pps", cnt, "txPPS")
 
-		infoLabels := make(map[string]string, len(labels)+5)
+		infoLabels := make(map[string]string, len(labels)+6)
 		for k, v := range labels {
 			infoLabels[k] = v
 		}
@@ -245,6 +251,7 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 		infoLabels["peer_model"] = utils.CleanString(ident["model"])
 		infoLabels["peer_family"] = utils.CleanString(ident["family"])
 		infoLabels["peer_firmware"] = utils.CleanString(ident["firmwareVersion"])
+		infoLabels["peer_firmware_build"] = utils.CleanString(ident["firmware"])
 
 		store.UpdateMetric("peer_info", infoLabels, 1.0)
 	}

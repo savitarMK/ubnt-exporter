@@ -59,6 +59,13 @@ func TestMetricsDefinitionsIntegrity(t *testing.T) {
 		"peer_mcs_rate_tx",
 		"peer_mcs_rate_rx",
 		"peer_remote_cable_loss",
+		"ap_snr",
+		"peer_snr",
+		"peer_remote_snr",
+		"peer_rx_packets",
+		"peer_tx_packets",
+		"peer_rx_pps",
+		"peer_tx_pps",
 	}
 
 	for _, req := range requiredMetrics {

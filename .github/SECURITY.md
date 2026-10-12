@@ -25,7 +25,7 @@ Security fixes are applied only to the latest release line. Users should always 
 
 | Version | Supported |
 | :--- | :--- |
-| 1.1.x (current beta) | Yes |
+| 1.1.x | Yes |
 | < 1.1 | No |
 
 Container images are rebuilt for every release so that the Debian base image includes the latest available security updates.

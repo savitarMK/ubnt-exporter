@@ -1,12 +1,12 @@
 # ubnt-exporter
 
-[![Release](https://img.shields.io/badge/version-1.1.0--beta-blue.svg)](VERSION)
+[![Release](https://img.shields.io/badge/version-v1.1.1-blue.svg)](VERSION)
 [![Go Version](https://img.shields.io/badge/go-1.27.2-00ADD8.svg)](go.mod)
 [![Docker Image](https://img.shields.io/badge/docker-debian%3A13.7--slim-2496ED.svg)](Dockerfile)
 [![Prometheus](https://img.shields.io/badge/prometheus-3.15%20ready-E6522C.svg)](https://prometheus.io)
 [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](LICENSE)
 
-A high-performance Prometheus exporter for Ubiquiti AirMAX (AC), LTU, and AirFiber wireless networking devices, written in Go.
+A high-performance Prometheus exporter for Ubiquiti AirMAX (M/AC), LTU, and AirFiber wireless networking devices, written in Go.
 
 ---
 

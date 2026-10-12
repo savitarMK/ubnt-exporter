@@ -105,11 +105,11 @@ func TestBuildInfoGauge(t *testing.T) {
 
 	foundVer := false
 	for _, lp := range metric.Label {
-		if *lp.Name == "version" && *lp.Value == "1.1.0-beta" {
+		if *lp.Name == "version" && *lp.Value == "1.1.1" {
 			foundVer = true
 		}
 	}
 	if !foundVer {
-		t.Errorf("version label '1.1.0-beta' not found in build info: %v", metric.Label)
+		t.Errorf("version label '1.1.1' not found in build info: %v", metric.Label)
 	}
 }

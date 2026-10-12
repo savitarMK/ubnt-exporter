@@ -187,7 +187,7 @@ Output excerpt:
 --- PROMETHEUS METRICS PREVIEW ---
 # HELP ubnt_build_info Build and version information for ubnt-exporter
 # TYPE ubnt_build_info gauge
-ubnt_build_info{branch="main",goversion="go1.27.2",revision="manual",version="1.1.0-beta"} 1
+ubnt_build_info{branch="main",goversion="go1.27.2",revision="manual",version="1.1.1"} 1
 # HELP ubnt_ap_cpu_usage_percent CPU Usage %
 # TYPE ubnt_ap_cpu_usage_percent gauge
 ubnt_ap_cpu_usage_percent{ip="10.0.0.1",name="AP-SECTOR-01",network="core",region="us-east",sector="alpha",tower="tower-north"} 14
@@ -292,7 +292,7 @@ logging:
 Log output:
 
 ```text
-CEF:0|Ubiquiti|ubnt-exporter|1.1.0-beta|STATUS|Scrape Finished|3|src=10.0.0.1 msg=Scrape cycle finished in 0.35s
+CEF:0|Ubiquiti|ubnt-exporter|1.1.1|STATUS|Scrape Finished|3|src=10.0.0.1 msg=Scrape cycle finished in 0.35s
 ```
 
 #### IETF Syslog Protocol (RFC 5424)

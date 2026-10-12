@@ -73,6 +73,9 @@ func ProcessWireless(
 									} else {
 										logger.DebugContext(ctx, devName, "Collector 'wireless': 'signal' field missing in linkQuality")
 									}
+									if snrRaw, has := linkQual["snr"]; has && snrRaw != nil {
+										store.UpdateMetric("ap_snr", labels, utils.SafeFloat(snrRaw))
+									}
 								}
 							}
 						}

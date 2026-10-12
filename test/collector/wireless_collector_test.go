@@ -41,6 +41,7 @@ func TestProcessWireless(t *testing.T) {
 							"linkQuality": map[string]any{
 								"signal":     -55.0,
 								"noiseFloor": -92.0,
+								"snr":        37.0,
 							},
 						},
 					},
@@ -93,5 +94,8 @@ func TestProcessWireless(t *testing.T) {
 	}
 	if sink.metrics["ap_noise"] != -92.0 {
 		t.Errorf("expected ap_noise -92.0, got %v", sink.metrics["ap_noise"])
+	}
+	if sink.metrics["ap_snr"] != 37.0 {
+		t.Errorf("expected ap_snr 37.0, got %v", sink.metrics["ap_snr"])
 	}
 }

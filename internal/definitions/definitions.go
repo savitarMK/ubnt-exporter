@@ -3,7 +3,7 @@ package definitions
 
 var (
 	// VERSION defines the application version, which can be overridden via -ldflags -X.
-	VERSION = "1.1.0-beta"
+	VERSION = "1.1.1"
 	// Revision holds the git commit hash injected during compilation.
 	Revision = "unknown"
 	// Branch holds the git branch name injected during compilation.
@@ -108,6 +108,12 @@ var MetricsDef = map[string]MetricDefinition{
 		Type:   TypeGauge,
 		Name:   "ubnt_ap_signal_dbm",
 		Help:   "AP Signal",
+		Labels: []string{"name", "ip"},
+	},
+	"ap_snr": {
+		Type:   TypeGauge,
+		Name:   "ubnt_ap_snr_db",
+		Help:   "AP Signal-to-Noise Ratio (SNR) in dB",
 		Labels: []string{"name", "ip"},
 	},
 	"ap_clients": {
@@ -260,7 +266,7 @@ var MetricsDef = map[string]MetricDefinition{
 		Help: "Peer Metadata",
 		Labels: []string{
 			"ap_name", "ap_ip", "peer_name", "peer_ip", "peer_mac",
-			"peer_product", "peer_model", "peer_family", "peer_firmware",
+			"peer_product", "peer_model", "peer_family", "peer_firmware", "peer_firmware_build",
 		},
 	},
 	"peer_signal": {
@@ -987,6 +993,42 @@ var MetricsDef = map[string]MetricDefinition{
 		Type:   TypeGauge,
 		Name:   "ubnt_peer_remote_cable_loss_db",
 		Help:   "Remote Peer Cable Loss in dB",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_snr": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_snr_db",
+		Help:   "Signal-to-Noise Ratio (SNR) in dB measured at the AP",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_remote_snr": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_remote_snr_db",
+		Help:   "Signal-to-Noise Ratio (SNR) in dB measured at the remote station",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_rx_packets": {
+		Type:   TypeCounter,
+		Name:   "ubnt_peer_rx_packets_total",
+		Help:   "Total packets received from the remote station",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_tx_packets": {
+		Type:   TypeCounter,
+		Name:   "ubnt_peer_tx_packets_total",
+		Help:   "Total packets transmitted to the remote station",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_rx_pps": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_rx_pps",
+		Help:   "Packets per second received from the remote station",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_tx_pps": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_tx_pps",
+		Help:   "Packets per second transmitted to the remote station",
 		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
 	},
 }
