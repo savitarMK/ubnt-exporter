@@ -88,7 +88,15 @@ RESULT: Configuration is VALID
 
 **Fix:** Ensure every device in `config.yaml` has a distinct IP address.
 
-#### 3. Invalid Listen Address
+#### 3. Duplicate Device Name
+
+```text
+ - duplicate device name "SAPTPCHP_AP" detected (configured on IPs "10.1.1.157" and "10.1.1.90")
+```
+
+**Fix:** Ensure every device in `config.yaml` has a distinct and unique `name` string to avoid label collisions and time series overwrites in Prometheus.
+
+#### 4. Invalid Listen Address
 
 ```text
  - invalid server.listen: invalid port in listen target "0.0.0.0:99999"
@@ -422,6 +430,8 @@ This diagnostic visibility allows network engineers to verify whether an absent 
 | Symptom | Cause | Resolution |
 | :--- | :--- | :--- |
 | Exporter reports `HTTP 401 Unauthorized` | Invalid username/password or credential placed under `labels:`. | Validate credentials in browser; check YAML indentation with `ubnt-exporter check`. |
-| Exporter reports `HTTP 404 Not Found` | Target device runs legacy AirOS v5 or unsupported firmware. | The REST API requires AirOS v8 (AirMAX AC), AirFiber 5XHD firmware, or LTU. |
+| Exporter reports `HTTP 404 Not Found` | Target device runs legacy AirOS v5 or unsupported firmware. | The REST API requires AirOS v8 (AirMAX AC), AirOS v6 (AirMAX M), AirFiber 5XHD firmware, or LTU. |
+| Exporter reports `remote error: tls: handshake failure` | Ubiquiti AirMAX M-series (AirOS v6) radios require legacy TLS RSA cipher suites. | Fixed in v1.1.1. The exporter automatically negotiates RSA cipher suites (`TLS_RSA_WITH_AES_*`) and TLS 1.0+ fallback. |
+| Exporter fails startup with `duplicate device name` | Multiple targets in `config.yaml` share the same `name` attribute. | Assign unique `name` strings to each device in `config.yaml` to prevent Prometheus time series collisions. |
 | Zero peers returned for Access Point | `peers` collector disabled or device operating in Station (CPE) mode. | Verify `enabled_collectors.peers: true` and confirm target radio is configured as an AP. |
 | Timeouts during scrape cycle | High radio CPU utilization or wireless link packet loss. | Increase `performance.request_timeout` in `system.yaml` or adjust `failure_backoff`. |

@@ -131,7 +131,7 @@ Defines fallback values inherited by all devices that do not specify their own o
 | :--- | :--- | :--- | :--- |
 | `username` | string | `""` | Default AirOS administrative username. |
 | `password` | string | `""` | Default AirOS administrative password. |
-| `ssl` | boolean | `false` | Default connection scheme (`true` for HTTPS, `false` for HTTP). |
+| `ssl` | boolean | `false` | Default connection scheme (`true` for HTTPS, `false` for HTTP). Built-in client supports modern TLS ECDHE and legacy RSA cipher suites (`TLS_RSA_WITH_AES_*`) for AirOS v6. |
 | `credentials_file` | string | `""` | Path to an external secrets file containing credentials. |
 | `labels` | key/value map | `{}` | Global labels injected into every metric emitted for all devices. |
 
@@ -141,11 +141,11 @@ Defines the list of Ubiquiti hardware targets:
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `name` | string | Yes | Unique human-readable identifier (e.g. `AP-TOWER-01`). Emitted as the `name` label in Prometheus metrics. |
+| `name` | string | Yes | Unique human-readable identifier (e.g. `AP-TOWER-01`). Must be unique across all devices to prevent Prometheus label collisions and startup validation errors. Emitted as the `name` label in Prometheus metrics. |
 | `ip` | string | Yes | IPv4 or IPv6 address of the target device. Emitted as the `ip` label. |
 | `username` | string | No | Device-level administrative username override. Inherits from `defaults` if omitted. |
 | `password` | string | No | Device-level administrative password override. Inherits from `defaults` if omitted. |
-| `ssl` | boolean | No | Device-level SSL toggle (`true` for HTTPS, `false` for HTTP). Inherits from `defaults` if omitted. |
+| `ssl` | boolean | No | Device-level SSL toggle (`true` for HTTPS, `false` for HTTP). Compatible with modern AirOS v8 and legacy AirOS v6 TLS cipher suites. Inherits from `defaults` if omitted. |
 | `labels` | key/value map | No | Dimensional Prometheus labels specific to this device. Automatically discovered and exposed across all metrics. |
 | `enabled_collectors` | key/value map | No | Per-device collector module overrides (e.g. disabling `peers` on Point-to-Point backhauls). |
 

@@ -1,6 +1,6 @@
 # Prometheus Integration & Exporter Guide
 
-The `ubnt-exporter` provides native Prometheus and OpenMetrics endpoints for collecting metrics from Ubiquiti AirMAX, LTU, and AirFiber wireless networking devices.
+The `ubnt-exporter` provides native Prometheus and OpenMetrics endpoints for collecting metrics from Ubiquiti AirMAX (M/AC), LTU, and AirFiber wireless networking devices.
 
 ---
 
@@ -41,6 +41,13 @@ The `ubnt-exporter` provides native Prometheus and OpenMetrics endpoints for col
 ## Overview
 
 The exporter queries AirOS REST endpoints (`/api/v1.0/status`) on remote Ubiquiti radios, parses the JSON payload into structured metrics, caches them in zero-contention thread-safe storage, and serves them to Prometheus in standard exposition formats.
+
+### Hardware & Transport Compatibility
+
+The exporter communicates with target devices using HTTP or HTTPS (REST API):
+
+- **AirMAX AC (AirOS v8), AirFiber 5XHD, and LTU Series:** Uses modern TLS 1.2/1.3 with ECDHE key exchange.
+- **AirMAX M-series (AirOS v6, e.g., Rocket M5, NanoStation M5, AirGrid M5):** Fully supported via built-in negotiation of legacy RSA cipher suites (`TLS_RSA_WITH_AES_256_GCM_SHA384`, `TLS_RSA_WITH_AES_128_GCM_SHA256`, and CBC suites) with TLS 1.0+ fallback.
 
 ---
 

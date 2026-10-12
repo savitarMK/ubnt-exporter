@@ -12,12 +12,12 @@ A high-performance Prometheus exporter for Ubiquiti AirMAX (M/AC), LTU, and AirF
 
 ## Overview
 
-The `ubnt-exporter` gathers operational telemetry and radio metrics from Ubiquiti wireless infrastructure running AirOS v8, LTU, and AirFiber 5XHD. Engineered for wireless internet service providers (WISPs) and enterprise networks, it concurrently queries hundreds of access points and backhaul links with low CPU and memory footprints.
+The `ubnt-exporter` gathers operational telemetry and radio metrics from Ubiquiti wireless infrastructure running AirOS v8 (AirMAX AC), AirOS v6 (AirMAX M), LTU, and AirFiber 5XHD. Engineered for wireless internet service providers (WISPs) and enterprise networks, it concurrently queries hundreds of access points and backhaul links with low CPU and memory footprints.
 
 ```text
 +-----------------------+           +-----------------------+           +-----------------------+
 |  Prometheus Server    |  Scrape   |     ubnt-exporter     |   REST    | Ubiquiti Radios       |
-|                       | --------> |                       | --------> |  - AirMAX AC (AP/CPE) |
+|                       | --------> |                       | --------> |  - AirMAX AC/M        |
 |  - /metrics (Daemon)  |           |  - Concurrency Pool   |   HTTPS   |  - AirFiber 5XHD      |
 |  - /probe (On-demand) |           |  - Token Persist      |           |  - LTU Series         |
 +-----------------------+           +-----------------------+           +-----------------------+
@@ -26,6 +26,7 @@ The `ubnt-exporter` gathers operational telemetry and radio metrics from Ubiquit
 ### Highlights
 
 - **Lightweight Runtime Footprint:** Static Go binary consuming approximately 10 to 15 MB of RAM under load, packaged in an immutable Debian 13.7 Trixie Slim container image.
+- **Broad Ubiquiti Hardware & TLS Compatibility:** Built-in support for both modern TLS ECDHE and legacy RSA cipher suites (`TLS_RSA_WITH_AES_*`) with TLS 1.0+ fallback, providing seamless HTTPS scraping for legacy AirMAX M-series radios (Rocket M5, NanoStation M5 on AirOS v6) as well as AirOS v8, LTU, and AirFiber devices.
 - **Worker Pool Concurrency:** Semaphore-regulated goroutine pool scaling smoothly across large inventories without socket starvation.
 - **AirOS REST Session Persistence:** Authenticates via `/api/v1.0/user/login`, reuses session tokens across cycles, and recovers transparently from expired sessions.
 - **Zero-Contention Metric Storage:** Thread-safe buffered data structures ensure non-blocking writes during high-frequency scrape cycles.
