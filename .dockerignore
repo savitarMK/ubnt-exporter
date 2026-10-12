@@ -1,0 +1,43 @@
+# Version control
+.git
+.gitignore
+
+# Configuration and secrets
+config.yaml
+system.yaml
+.env
+.env.*
+
+# Example configurations and documentation
+*.example
+README.md
+LICENSE
+docker-compose.yml
+*.txt
+
+# Compiled binaries and build outputs
+/ubnt-exporter
+bin/
+dist/
+build/
+*.exe
+
+# Test and coverage artifacts
+*.test
+*.out
+coverage.txt
+coverage.html
+*.prof
+*.pprof
+
+# Logs and runtime files
+logs/
+*.log
+
+# Editor and IDE directories
+.vscode/
+.idea/
+
+# Tooling and linters
+.golangci.yml
+.dockerignore

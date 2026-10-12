@@ -1,0 +1,37 @@
+defaults:
+  username: "YOUR_USERNAME"
+  password: "YOUR_PASSWORD"
+  # credentials_file: "secrets.yaml"    # Optional: External credentials file for GitOps secret separation
+  ssl: false                            # Default SSL protocol (false for HTTP :80, true for HTTPS :443)
+  labels:                               # Global default labels inherited by all devices
+    region: "us-east"
+    network: "core"
+
+devices:
+  # Example 1: Minimal device configuration inheriting global credentials and defaults
+  - name: "AP-SECTOR-01"                # Unique hostname or device identifier
+    ip: "10.0.0.1"                      # Unique IP address
+    labels:                             # Custom dimensional labels for this device
+      tower: "tower-north"
+      sector: "alpha"
+
+  # Example 2: Device configuration with custom connection parameters and collector overrides
+  # NOTE: 'ssl', 'username', and 'password' are top-level device properties (indented 4 spaces).
+  # DO NOT place or indent them under 'labels:', or YAML will treat them as metric label tags!
+  - name: "AP-BACKHAUL-01"
+    ip: "10.0.0.2"
+    ssl: true                           # Device override: Connect via HTTPS (:443)
+    username: "custom_admin"            # Device override: Dedicated username for this host
+    password: "CustomPassword123"       # Device override: Dedicated password for this host
+    labels:
+      tower: "tower-south"
+      role: "backhaul"
+    enabled_collectors:
+      peers: false                      # Device override: Disable peer telemetry for this AP only
+
+enabled_collectors:
+  wireless:   true                      # WLAN AirMAX / LTU metrics
+  airfiber:   true                      # WLAN AirFiber metrics
+  system:     true                      # System health metrics (CPU, RAM, Uptime)
+  interfaces: true                      # Interface traffic metrics (Bytes, Packets, Drops)
+  peers:      true                      # Connected stations/peers telemetry (Signal, CINR, Rates)

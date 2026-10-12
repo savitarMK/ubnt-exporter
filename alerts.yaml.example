@@ -1,0 +1,191 @@
+# Example Prometheus alerting rules for Ubiquiti AirMAX, LTU, and AirFiber networks
+# Compatible with Prometheus 3.15+ and Alertmanager 0.34+
+
+groups:
+  # =========================================================================
+  # 1. Physical Radio & Infrastructure Connectivity Alerts
+  # =========================================================================
+  - name: ubnt_infrastructure_alerts
+    rules:
+      - alert: UbntDeviceDown
+        expr: ubnt_scrape_success == 0
+        for: 2m
+        labels:
+          severity: critical
+          target_type: access_point
+          inhibit_group: "{{ $labels.name }}"
+        annotations:
+          summary: "Ubiquiti radio offline: {{ $labels.name }}"
+          description: "Target radio {{ $labels.name }} ({{ $labels.ip }}) has been unreachable for more than 2 minutes."
+          runbook_url: "docs/diagnostics.md#troubleshooting-common-airos-quirks"
+
+      - alert: UbntAirFiberLinkDown
+        expr: ubnt_af_link_state == 0
+        for: 1m
+        labels:
+          severity: critical
+          target_type: backhaul_airfiber
+          inhibit_group: "{{ $labels.tower }}"
+        annotations:
+          summary: "AirFiber backhaul link down on {{ $labels.name }}"
+          description: "AirFiber 5XHD radio {{ $labels.name }} on tower {{ $labels.tower }} has lost RF link connectivity (linkState = disconnected)."
+          runbook_url: "docs/diagnostics.md#airfiber-diagnostic-audits"
+
+  # =========================================================================
+  # 2. Wireless Radiofrequency (RF) Health & Performance Alerts
+  # =========================================================================
+  - name: ubnt_wireless_rf_alerts
+    rules:
+      - alert: UbntRFChainImbalance
+        expr: ubnt_peer_chain_imbalance_db > 5
+        for: 15m
+        labels:
+          severity: warning
+          target_type: cpe_station
+          inhibit_group: "{{ $labels.ap_name }}"
+        annotations:
+          summary: "High RF chain imbalance on {{ $labels.peer_name }}"
+          description: "Polarization delta between Chain 0 and Chain 1 is {{ $value | printf \"%.1f\" }} dB on client {{ $labels.peer_name }} connected to {{ $labels.ap_name }}."
+          runbook_url: "docs/diagnostics.md#detecting-rf-chain-imbalance"
+
+      - alert: UbntWeakSignal
+        expr: ubnt_peer_signal_dbm <= -75
+        for: 10m
+        labels:
+          severity: warning
+          target_type: cpe_station
+          inhibit_group: "{{ $labels.ap_name }}"
+        annotations:
+          summary: "Weak RF signal on {{ $labels.peer_name }}"
+          description: "Received signal level is {{ $value | printf \"%.1f\" }} dBm (threshold: -75 dBm) on client {{ $labels.peer_name }}."
+          runbook_url: "docs/diagnostics.md#station-health--signal-auditing"
+
+      - alert: UbntHighNoiseFloor
+        expr: ubnt_ap_noise_floor_dbm >= -82
+        for: 10m
+        labels:
+          severity: warning
+          target_type: access_point
+          inhibit_group: "{{ $labels.name }}"
+        annotations:
+          summary: "Severe RF spectrum interference on {{ $labels.name }}"
+          description: "Noise floor on {{ $labels.name }} has risen to {{ $value | printf \"%.1f\" }} dBm, indicating co-channel interference or high spectral congestion."
+          runbook_url: "docs/diagnostics.md#station-health--signal-auditing"
+
+      - alert: UbntAirFiberGPSSyncLost
+        expr: ubnt_af_gps_sync_status == 0
+        for: 5m
+        labels:
+          severity: critical
+          target_type: backhaul_airfiber
+          inhibit_group: "{{ $labels.tower }}"
+        annotations:
+          summary: "AirFiber GPS sync lost on {{ $labels.name }}"
+          description: "AirFiber radio {{ $labels.name }} on tower {{ $labels.tower }} has lost GPS satellite synchronization. Operating in unsynchronized free-run mode."
+          runbook_url: "docs/diagnostics.md#airfiber-diagnostic-audits"
+
+      - alert: UbntAirFiberDFSBlocked
+        expr: ubnt_af_dfs_blocked_status == 1
+        for: 1m
+        labels:
+          severity: warning
+          target_type: backhaul_airfiber
+          inhibit_group: "{{ $labels.name }}"
+        annotations:
+          summary: "AirFiber DFS CAC radar scan active on {{ $labels.name }}"
+          description: "DFS radar event detected on {{ $labels.name }}. Radio is scanning channel availability with CAC countdown active."
+          runbook_url: "docs/diagnostics.md#dfs-radar-cac-and-lockout-timers"
+
+  # =========================================================================
+  # 3. Target Hardware & Ethernet Subsystem Alerts
+  # =========================================================================
+  - name: ubnt_hardware_interface_alerts
+    rules:
+      - alert: UbntHighCPULoad
+        expr: ubnt_ap_cpu_usage_percent > 90
+        for: 10m
+        labels:
+          severity: warning
+          target_type: access_point
+          inhibit_group: "{{ $labels.name }}"
+        annotations:
+          summary: "High CPU utilization on {{ $labels.name }}"
+          description: "CPU load on radio {{ $labels.name }} has exceeded 90% (current: {{ $value | printf \"%.1f\" }}%)."
+          runbook_url: "docs/diagnostics.md#live-terminal-diagnostics-diag"
+
+      - alert: UbntEthernetPacketDrops
+        expr: rate(ubnt_iface_rx_drops_total[5m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+          target_type: access_point
+          inhibit_group: "{{ $labels.name }}"
+        annotations:
+          summary: "Ethernet packet drops on {{ $labels.name }} ({{ $labels.interface }})"
+          description: "Interface {{ $labels.interface }} on {{ $labels.name }} is dropping {{ $value | printf \"%.1f\" }} packets/sec due to queue buffer exhaustion."
+          runbook_url: "docs/diagnostics.md#detecting-degraded-ethernet-ports"
+
+      - alert: UbntAirFiberHighTemperature
+        expr: ubnt_af_temperature_celsius > 75
+        for: 15m
+        labels:
+          severity: warning
+          target_type: backhaul_airfiber
+          inhibit_group: "{{ $labels.name }}"
+        annotations:
+          summary: "AirFiber radio temperature high on {{ $labels.name }}"
+          description: "Internal core temperature on AirFiber 5XHD {{ $labels.name }} is {{ $value | printf \"%.1f\" }} C (threshold: 75 C)."
+          runbook_url: "docs/diagnostics.md#airfiber-diagnostic-audits"
+
+  # =========================================================================
+  # 4. Exporter Daemon Operational Self-Observability Alerts
+  # =========================================================================
+  - name: ubnt_exporter_alerts
+    rules:
+      - alert: UbntExporterCollectorFailing
+        expr: ubnt_exporter_collector_success == 0
+        for: 3m
+        labels:
+          severity: critical
+          target_type: daemon_internal
+          inhibit_group: "{{ $labels.instance }}"
+        annotations:
+          summary: "Collector module failure: {{ $labels.collector }}"
+          description: "The '{{ $labels.collector }}' collector module in ubnt-exporter has failed or encountered a recovered panic."
+          runbook_url: "docs/exporter.md#exporter-internal-telemetry"
+
+      - alert: UbntExporterHighErrorRate
+        expr: sum(rate(ubnt_exporter_scrape_requests_total{status!="success"}[5m])) / sum(rate(ubnt_exporter_scrape_requests_total[5m])) * 100 > 15
+        for: 5m
+        labels:
+          severity: warning
+          target_type: daemon_internal
+          inhibit_group: "{{ $labels.instance }}"
+        annotations:
+          summary: "Elevated scrape failure rate on ubnt-exporter"
+          description: "Scrape failure rate is {{ $value | printf \"%.1f\" }}% over the last 5 minutes (threshold: 15%). Check target credentials and network reachability."
+          runbook_url: "docs/exporter.md#exporter-internal-telemetry"
+
+      - alert: UbntExporterLowFleetAvailability
+        expr: (ubnt_exporter_devices_online_total / ubnt_exporter_devices_configured_total) * 100 < 80
+        for: 10m
+        labels:
+          severity: warning
+          target_type: daemon_internal
+          inhibit_group: "{{ $labels.instance }}"
+        annotations:
+          summary: "Ubiquiti fleet availability degradation"
+          description: "Online device availability has dropped to {{ $value | printf \"%.1f\" }}% (fewer than 80% of configured radios are online)."
+          runbook_url: "docs/exporter.md#exporter-internal-telemetry"
+
+      - alert: UbntExporterScrapeDurationHigh
+        expr: ubnt_exporter_scrape_cycle_duration_seconds > 25
+        for: 10m
+        labels:
+          severity: warning
+          target_type: daemon_internal
+          inhibit_group: "{{ $labels.instance }}"
+        annotations:
+          summary: "Scrape cycle execution time high on ubnt-exporter"
+          description: "Global inventory scrape duration is {{ $value | printf \"%.2f\" }}s, approaching the scrape interval. Increase max_workers or tune timeouts in system.yaml."
+          runbook_url: "docs/configuration.md#the-performance-section"

@@ -1,0 +1,39 @@
+server:
+  port: 8000
+  scrape_interval: 30        # General scraping cycle interval in seconds
+  listen: "0.0.0.0:8000"     # Space-separated list of socket addresses to listen on (IPv4, IPv6, UDS)
+  # probe_allowed_targets:   # Optional: Restrict /probe targets to specific CIDRs or hostnames (SSRF prevention)
+  #   - "10.0.0.0/8"
+  #   - "172.16.0.0/12"
+  #   - "192.168.0.0/16"
+
+performance:
+  max_workers: 100           # Concurrent worker pool (semaphore-controlled goroutines)
+  request_timeout: 15        # Maximum request timeout per device in seconds
+  login_timeout: 5           # Maximum login timeout in seconds
+  socket_timeout: 2          # Maximum socket connection timeout in seconds
+  failure_backoff: 120       # Cooling-off duration in seconds after failure before retrying
+
+logging:
+  level: "INFO"              # Default severity level (DEBUG, INFO, WARN, WARNING, ERROR)
+  syslog_facility: "local0"  # Standard syslog facility code (e.g., 'local0' through 'local7', 'user')
+
+  formats:
+    cef: true                # ArcSight Common Event Format (for SIEMs such as Splunk and Wazuh)
+    rfc5424: false           # IETF Syslog Protocol standard with ISO-8601 timestamps
+    syslog: false            # Traditional BSD Syslog (RFC 3164) format
+    json: false              # Structured JSON lines (recommended for Kubernetes, Loki, and Elastic)
+    text: false              # Human-readable plain text format (recommended for Docker logs)
+
+  console: true              # Write log records to standard output (Docker container logs)
+  
+  file:
+    enabled: false           # Enable persistent file logging
+    path: "logs/app.log"     # Target file path for log persistence
+    max_size_mb: 5           # Maximum file size in megabytes before rotation
+    backup_count: 3          # Number of rotated historical archive files to retain
+
+  dampening:
+    enabled: false           # Throttles repetitive identical messages to prevent log storms
+    threshold: 3             # Number of consecutive identical occurrences allowed before suppression
+    interval: 300            # Seconds before emitting a summary of suppressed events and resetting

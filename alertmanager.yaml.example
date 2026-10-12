@@ -1,0 +1,152 @@
+# Example Prometheus Alertmanager configuration for Ubiquiti wireless networks
+# Designed for Alertmanager v0.34+ (incorporating message editing, templated routing, and hierarchical inhibition)
+
+global:
+  resolve_timeout: 5m
+  # Global Slack webhook integration (prefer file-based secrets in production)
+  # slack_api_url_file: "/etc/alertmanager/secrets/slack_webhook"
+  slack_api_url: "https://hooks.slack.com/services/REPLACE_WITH_YOUR_SLACK_WEBHOOK"
+  # Global Telegram bot token (Alertmanager 0.31+)
+  telegram_api_url: "https://api.telegram.org"
+
+# =============================================================================
+# Routing Tree
+# =============================================================================
+route:
+  # Aggregation group key to avoid global locks (Alertmanager 0.33+)
+  group_by: ["alertname", "tower", "ap_name", "target_type"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: "slack-wireless-noc"
+
+  routes:
+    # 1. Critical backhaul link outages dispatched immediately to PagerDuty & Telegram
+    - match:
+        severity: critical
+        target_type: backhaul_airfiber
+      receiver: "telegram-critical-noc"
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # 2. Exporter daemon health alerts sent to DevOps / SRE channel
+    - match:
+        target_type: daemon_internal
+      receiver: "slack-devops"
+      group_wait: 30s
+      repeat_interval: 2h
+
+    # 3. Customer CPE RF degradation grouped and sent to Level-2 Wireless NOC
+    - match:
+        target_type: cpe_station
+      receiver: "slack-wireless-noc"
+      group_wait: 1m
+      group_interval: 10m
+      repeat_interval: 6h
+
+# =============================================================================
+# Hierarchical Inhibition Matrix (Alert Storm Suppression)
+# =============================================================================
+inhibit_rules:
+  # Rule 1: Access Point offline suppresses downstream CPE RF degradation alerts
+  # When an AP drops, do not fire 50 individual weak signal or chain imbalance alerts
+  - source_match:
+      alertname: "UbntDeviceDown"
+    target_match_re:
+      alertname: "UbntWeakSignal|UbntRFChainImbalance|UbntHighNoiseFloor"
+    equal: ["name", "ip"]
+
+  # Rule 2: AirFiber backhaul link failure suppresses all dependent AP alerts on the same tower
+  - source_match:
+      alertname: "UbntAirFiberLinkDown"
+    target_match_re:
+      alertname: "UbntDeviceDown|UbntWeakSignal|UbntRFChainImbalance"
+    equal: ["tower"]
+
+  # Rule 3: Exporter daemon high error rate suppresses individual device timeouts
+  - source_match:
+      alertname: "UbntExporterHighErrorRate"
+    target_match:
+      alertname: "UbntDeviceDown"
+    equal: ["instance"]
+
+# =============================================================================
+# Notification Receivers
+# =============================================================================
+receivers:
+  # ---------------------------------------------------------------------------
+  # Receiver A: Slack Wireless NOC (Flapping Mitigation via Message Editing)
+  # ---------------------------------------------------------------------------
+  - name: "slack-wireless-noc"
+    slack_configs:
+      - channel: "#noc-wireless-alerts"
+        send_resolved: true
+        # Alertmanager 0.32+ feature: edits existing Slack message on update rather
+        # than spamming the channel with flapping link notifications
+        edit_existing_messages: true
+        icon_emoji: ""
+        title: |-
+          [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }} (Tower: {{ .CommonLabels.tower | default "N/A" }})
+        text: |-
+          {{ range .Alerts }}
+          *Device:* `{{ .Labels.name | default .Labels.peer_name }}` (IP: {{ .Labels.ip | default .Labels.peer_ip }})
+          *Severity:* `{{ .Labels.severity | toUpper }}`
+          *Description:* {{ .Annotations.description }}
+          {{ if .Annotations.runbook_url }}*Runbook:* <{{ .Annotations.runbook_url }}|Diagnostics Guide>{{ end }}
+          {{ end }}
+        color: |-
+          {{ if eq .Status "resolved" }}#00B300{{ else if eq .CommonLabels.severity "critical" }}#D60000{{ else }}#E6522C{{ end }}
+
+  # ---------------------------------------------------------------------------
+  # Receiver B: Telegram Critical NOC (Formatted HTML Outage Alerts)
+  # ---------------------------------------------------------------------------
+  - name: "telegram-critical-noc"
+    telegram_configs:
+      # bot_token_file: "/etc/alertmanager/secrets/telegram_bot_token"
+      - bot_token: "REPLACE_WITH_TELEGRAM_BOT_TOKEN"
+        chat_id: -1001234567890
+        send_resolved: true
+        parse_mode: "HTML"
+        message: |-
+          <b>[{{ .Status | toUpper }}] Ubiquiti Network Alert</b>
+          <b>Rule:</b> {{ .CommonLabels.alertname }}
+          <b>Severity:</b> {{ .CommonLabels.severity | toUpper }}
+          <b>Tower:</b> {{ .CommonLabels.tower | default "N/A" }}
+          
+          {{ range .Alerts }}
+          <b>Target:</b> <code>{{ .Labels.name }}</code> ({{ .Labels.ip }})
+          <b>Detail:</b> {{ .Annotations.description }}
+          {{ if .Annotations.runbook_url }}<b>Action:</b> <a href="{{ .Annotations.runbook_url }}">Open Diagnostics Runbook</a>{{ end }}
+          {{ end }}
+
+  # ---------------------------------------------------------------------------
+  # Receiver C: DevOps Slack Channel (Exporter Daemon Health)
+  # ---------------------------------------------------------------------------
+  - name: "slack-devops"
+    slack_configs:
+      - channel: "#monitoring-sre"
+        send_resolved: true
+        edit_existing_messages: true
+        title: |-
+          [EXPORTER {{ .Status | toUpper }}] {{ .CommonLabels.alertname }}
+        text: |-
+          {{ range .Alerts }}
+          *Component:* `{{ .Labels.collector | default "daemon" }}`
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Instance:* `{{ .Labels.instance }}`
+          {{ end }}
+        color: |-
+          {{ if eq .Status "resolved" }}#00B300{{ else }}#D60000{{ end }}
+
+  # ---------------------------------------------------------------------------
+  # Receiver D: Direct WISP Ticketing Webhook (Templated Payload - 0.32+)
+  # ---------------------------------------------------------------------------
+  - name: "wisp-ticketing-webhook"
+    webhook_configs:
+      - url: "https://crm.wisp-domain.net/api/v1/network-alerts"
+        send_resolved: true
+        # Webhook URL and payload templating allows direct JSON delivery to billing/CRM APIs
+        http_config:
+          # credentials_file: "/etc/alertmanager/secrets/wisp_crm_token"
+          bearer_token: "REPLACE_WITH_WISP_CRM_TOKEN"
