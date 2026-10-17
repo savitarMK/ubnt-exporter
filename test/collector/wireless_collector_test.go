@@ -99,3 +99,35 @@ func TestProcessWireless(t *testing.T) {
 		t.Errorf("expected ap_snr 37.0, got %v", sink.metrics["ap_snr"])
 	}
 }
+
+func TestProcessWireless_NoPeers_RadioNoiseFallback(t *testing.T) {
+	sink := newMockMetricSink()
+	apLabels := map[string]string{"name": "test-ap-empty", "ip": "10.0.0.10"}
+
+	data := map[string]any{
+		"wireless": map[string]any{
+			"radios": []any{
+				map[string]any{
+					"linkState":  "connected",
+					"noiseFloor": -95.0,
+				},
+			},
+			"peers": []any{},
+		},
+	}
+
+	collectorsConf := map[string]bool{
+		"system":     false,
+		"interfaces": false,
+		"peers":      false,
+	}
+
+	collector.ProcessWireless(context.Background(), data, apLabels, collectorsConf, sink)
+
+	if sink.metrics["ap_noise"] != -95.0 {
+		t.Errorf("expected ap_noise fallback -95.0 from mainRadio, got %v", sink.metrics["ap_noise"])
+	}
+	if sink.metrics["ap_clients"] != 0.0 {
+		t.Errorf("expected ap_clients 0.0, got %v", sink.metrics["ap_clients"])
+	}
+}

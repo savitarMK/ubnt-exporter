@@ -225,22 +225,27 @@ func (d *DeviceScraper) Scrape(ctx context.Context, client *http.Client, store *
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	metaLabels := map[string]string{"name": d.Name, "ip": d.IP}
+
 	if !dryRun && !d.NextAllowedScrape.IsZero() && time.Now().Before(d.NextAllowedScrape) {
+		store.UpdateMetric("scrape_success", metaLabels, 0.0)
 		return false
 	}
 
 	startTime := time.Now()
 	success := false
-	metaLabels := map[string]string{"name": d.Name, "ip": d.IP}
 
 	defer func() {
 		if success {
 			duration := time.Since(startTime).Seconds()
 			store.ScrapeDuration.WithLabelValues(d.Name, d.IP).Observe(duration)
 			store.UpdateMetric("scrape_success", metaLabels, 1.0)
-		} else if !dryRun {
-			// Purge stale metrics on failure
-			store.RemoveDeviceMetrics(d.Name, d.IP)
+		} else {
+			if !dryRun {
+				// Purge stale telemetry metrics on failure (preserves scrape_error)
+				store.RemoveDeviceMetrics(d.Name, d.IP)
+			}
+			store.UpdateMetric("scrape_success", metaLabels, 0.0)
 		}
 	}()
 

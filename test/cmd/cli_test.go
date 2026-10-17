@@ -47,7 +47,7 @@ func TestCLI_Check_InvalidConfig(t *testing.T) {
 }
 
 func TestCLI_Check_ValidConfigExample(t *testing.T) {
-	cmd := exec.Command("go", "run", "../../cmd/ubnt-exporter", "check", "-c", "../../config.yaml.example", "-s", "../../system.yaml.example")
+	cmd := exec.Command("go", "run", "../../cmd/ubnt-exporter", "check", "-c", "../../examples/config.yaml.example", "-s", "../../examples/system.yaml.example")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("unexpected error checking example configs: %v, output: %s", err, string(out))
@@ -59,7 +59,7 @@ func TestCLI_Check_ValidConfigExample(t *testing.T) {
 }
 
 func TestCLI_Show_SanitizedConfig(t *testing.T) {
-	cmd := exec.Command("go", "run", "../../cmd/ubnt-exporter", "show", "-c", "../../config.yaml.example", "-s", "../../system.yaml.example")
+	cmd := exec.Command("go", "run", "../../cmd/ubnt-exporter", "show", "-c", "../../examples/config.yaml.example", "-s", "../../examples/system.yaml.example")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("unexpected error running show: %v, output: %s", err, string(out))

@@ -265,4 +265,29 @@ func TestDeviceScraper_Scrape_Errors(t *testing.T) {
 	if scDecodeError.Scrape(context.Background(), tsDecodeError.Client(), store, true) {
 		t.Errorf("expected scrape to fail on malformed JSON payload")
 	}
+
+	// 5. Daemon failure (dryRun=false) purges stale telemetry, sets scrape_success=0, and preserves scrape_error
+	store.ClearAllMetrics()
+	store.UpdateMetric("cpu_usage", map[string]string{"name": "DaemonFail", "ip": strings.TrimPrefix(tsAuthFail.URL, "http://")}, 50.0)
+	scDaemonFail := scraper.NewDeviceScraper(
+		config.DeviceConfig{Name: "DaemonFail", IP: strings.TrimPrefix(tsAuthFail.URL, "http://"), Username: "u", Password: "p"},
+		config.DefaultsConfig{},
+		sys,
+		nil,
+		nil,
+	)
+	if scDaemonFail.Scrape(context.Background(), tsAuthFail.Client(), store, false) {
+		t.Errorf("expected daemon scrape to fail on 401")
+	}
+	if _, hasCPU := store.GetDeviceMetric("DaemonFail", scDaemonFail.IP, "cpu_usage"); hasCPU {
+		t.Errorf("expected stale cpu_usage metric to be purged on daemon scrape failure")
+	}
+	succVal, hasSucc := store.GetDeviceMetric("DaemonFail", scDaemonFail.IP, "scrape_success")
+	if !hasSucc || succVal != 0.0 {
+		t.Errorf("expected scrape_success=0.0 on daemon scrape failure, got %v (found: %v)", succVal, hasSucc)
+	}
+	errVal, hasErr := store.GetDeviceMetric("DaemonFail", scDaemonFail.IP, "scrape_error")
+	if !hasErr || errVal != 1.0 {
+		t.Errorf("expected scrape_error=1.0 to be preserved on daemon scrape failure, got %v (found: %v)", errVal, hasErr)
+	}
 }

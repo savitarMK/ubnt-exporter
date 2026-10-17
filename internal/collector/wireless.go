@@ -58,6 +58,7 @@ func ProcessWireless(
 
 		if len(radiosList) > 0 {
 			if mainRadio, ok := radiosList[0].(map[string]any); ok {
+				noiseRecorded := false
 				if len(peersList) > 0 {
 					if firstPeer, ok := peersList[0].(map[string]any); ok {
 						if localList, ok := firstPeer["local"].([]any); ok && len(localList) > 0 {
@@ -65,6 +66,7 @@ func ProcessWireless(
 								if linkQual, ok := localData["linkQuality"].(map[string]any); ok {
 									if noiseRaw, has := linkQual["noiseFloor"]; has && noiseRaw != nil {
 										store.UpdateMetric("ap_noise", labels, utils.SafeFloat(noiseRaw))
+										noiseRecorded = true
 									} else {
 										logger.DebugContext(ctx, devName, "Collector 'wireless': 'noiseFloor' field missing in linkQuality")
 									}
@@ -79,6 +81,11 @@ func ProcessWireless(
 								}
 							}
 						}
+					}
+				}
+				if !noiseRecorded {
+					if noiseRaw, has := mainRadio["noiseFloor"]; has && noiseRaw != nil {
+						store.UpdateMetric("ap_noise", labels, utils.SafeFloat(noiseRaw))
 					}
 				}
 

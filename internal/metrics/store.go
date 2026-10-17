@@ -69,41 +69,46 @@ type Store struct {
 var globalStore *Store
 var storeOnce sync.Once
 
+// NewStore constructs an isolated, thread-safe metric store instance.
+func NewStore() *Store {
+	defsCopy := make(map[string]definitions.MetricDefinition, len(definitions.MetricsDef))
+	descsMap := make(map[string]*prometheus.Desc, len(definitions.MetricsDef))
+	for k, v := range definitions.MetricsDef {
+		lbls := make([]string, len(v.Labels))
+		copy(lbls, v.Labels)
+		def := definitions.MetricDefinition{
+			Type:   v.Type,
+			Name:   v.Name,
+			Help:   v.Help,
+			Labels: lbls,
+		}
+		defsCopy[k] = def
+		descsMap[k] = prometheus.NewDesc(def.Name, def.Help, def.Labels, nil)
+	}
+
+	hist := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "ubnt_scrape_duration_seconds",
+			Help:    "Time taken to scrape the device (latency distribution)",
+			Buckets: []float64{0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
+		},
+		[]string{"name", "ip"},
+	)
+
+	return &Store{
+		defs:           defsCopy,
+		descs:          descsMap,
+		data:           make(map[string]map[string]float64),
+		labelsMap:      make(map[string]map[string][]string),
+		deviceRefs:     make(map[string][]metricRef),
+		ScrapeDuration: hist,
+	}
+}
+
 // GetStore returns the singleton metric store.
 func GetStore() *Store {
 	storeOnce.Do(func() {
-		defsCopy := make(map[string]definitions.MetricDefinition, len(definitions.MetricsDef))
-		descsMap := make(map[string]*prometheus.Desc, len(definitions.MetricsDef))
-		for k, v := range definitions.MetricsDef {
-			lbls := make([]string, len(v.Labels))
-			copy(lbls, v.Labels)
-			def := definitions.MetricDefinition{
-				Type:   v.Type,
-				Name:   v.Name,
-				Help:   v.Help,
-				Labels: lbls,
-			}
-			defsCopy[k] = def
-			descsMap[k] = prometheus.NewDesc(def.Name, def.Help, def.Labels, nil)
-		}
-
-		hist := prometheus.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Name:    "ubnt_scrape_duration_seconds",
-				Help:    "Time taken to scrape the device (latency distribution)",
-				Buckets: []float64{0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
-			},
-			[]string{"name", "ip"},
-		)
-
-		globalStore = &Store{
-			defs:           defsCopy,
-			descs:          descsMap,
-			data:           make(map[string]map[string]float64),
-			labelsMap:      make(map[string]map[string][]string),
-			deviceRefs:     make(map[string][]metricRef),
-			ScrapeDuration: hist,
-		}
+		globalStore = NewStore()
 	})
 	return globalStore
 }
@@ -162,16 +167,19 @@ func (s *Store) updateMetricLocked(key string, labels map[string]string, value f
 		s.labelsMap[key] = make(map[string][]string)
 	}
 
+	_, alreadyTracked := s.data[key][compKey]
 	s.data[key][compKey] = value
 	s.labelsMap[key][compKey] = labelValues
 
-	devName, devIP := getDeviceKey(labels)
-	if devName != "" && devIP != "" {
-		refKey := devName + ":" + devIP
-		s.deviceRefs[refKey] = append(s.deviceRefs[refKey], metricRef{
-			metricKey: key,
-			compKey:   compKey,
-		})
+	if !alreadyTracked && key != "scrape_error" {
+		devName, devIP := getDeviceKey(labels)
+		if devName != "" && devIP != "" {
+			refKey := devName + ":" + devIP
+			s.deviceRefs[refKey] = append(s.deviceRefs[refKey], metricRef{
+				metricKey: key,
+				compKey:   compKey,
+			})
+		}
 	}
 }
 
@@ -203,17 +211,20 @@ func (s *Store) IncrementMetric(key string, labels map[string]string, amount flo
 		s.labelsMap[key] = make(map[string][]string)
 	}
 
+	_, alreadyTracked := s.data[key][compKey]
 	current := s.data[key][compKey]
 	s.data[key][compKey] = current + amount
 	s.labelsMap[key][compKey] = labelValues
 
-	devName, devIP := getDeviceKey(labels)
-	if devName != "" && devIP != "" {
-		refKey := devName + ":" + devIP
-		s.deviceRefs[refKey] = append(s.deviceRefs[refKey], metricRef{
-			metricKey: key,
-			compKey:   compKey,
-		})
+	if !alreadyTracked && key != "scrape_error" {
+		devName, devIP := getDeviceKey(labels)
+		if devName != "" && devIP != "" {
+			refKey := devName + ":" + devIP
+			s.deviceRefs[refKey] = append(s.deviceRefs[refKey], metricRef{
+				metricKey: key,
+				compKey:   compKey,
+			})
+		}
 	}
 }
 

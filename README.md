@@ -32,7 +32,7 @@ The `ubnt-exporter` gathers operational telemetry and radio metrics from Ubiquit
 - **Zero-Contention Metric Storage:** Thread-safe buffered data structures ensure non-blocking writes during high-frequency scrape cycles.
 - **OpenMetrics 2.0 & Prometheus 3.15 Ready:** Full content negotiation, Unix Domain Socket (`unix:///path.sock`) scraping, and standard `ubnt_build_info` telemetry.
 - **Integrated Exporter Self-Telemetry:** Native OpenMetrics self-observability exposing module latency histograms (`ubnt_exporter_collector_duration_seconds`), execution counters, fleet availability ratios, and Go runtime stats (`go_*`, `process_*`).
-- **Production-Ready Alertmanager 0.34+ Stack:** Turnkey alert rules ([`alerts.yaml.example`](alerts.yaml.example)) and Alertmanager routing templates ([`alertmanager.yaml.example`](alertmanager.yaml.example)) featuring hierarchical inhibition (AP/CPE storm suppression), Slack message editing for RF link flapping, and Telegram HTML delivery.
+- **Production-Ready Alertmanager 0.34+ Stack:** Turnkey alert rules ([`examples/alerts.yaml.example`](examples/alerts.yaml.example)) and Alertmanager routing templates ([`examples/alertmanager.yaml.example`](examples/alertmanager.yaml.example)) featuring hierarchical inhibition (AP/CPE storm suppression), Slack message editing for RF link flapping, and Telegram HTML delivery.
 - **Dynamic Configuration Reloading:** Listens for `SIGHUP` signals to reload logging levels and runtime configuration on the fly.
 - **Comprehensive SIEM & Cloud-Native Logging:** Native support for structured JSON lines (Kubernetes, Loki, Elastic), ArcSight CEF, IETF Syslog (RFC 5424), BSD Syslog, and formatted text output.
 - **Asynchronous Request Tracing & Context Correlation:** Correlates log entries across concurrent daemon cycles (`cycle-N`) and on-demand `/probe` targets with `X-Request-ID` propagation across all logging formats.
@@ -49,7 +49,7 @@ Comprehensive documentation is organized in the [`docs/`](docs/) directory:
 - [**Configuration Guide**](docs/configuration.md)
   Dual-file architecture (`config.yaml` and `system.yaml`), `--cfg-dir` search precedence, external secrets management (`secrets.yaml`), probe security allowlists, and custom dimensional labels.
 - [**Prometheus Integration & Exporter Guide**](docs/exporter.md)
-  Continuous daemon vs. multi-target probe modes, OpenMetrics 2.0 content negotiation, full metric catalog, internal self-telemetry specifications, PromQL alert rules ([`alerts.yaml.example`](alerts.yaml.example)), Alertmanager 0.34+ Slack & Telegram integration ([`alertmanager.yaml.example`](alertmanager.yaml.example)), and production deployment manifests (Systemd, Docker Compose, Kubernetes).
+  Continuous daemon vs. multi-target probe modes, OpenMetrics 2.0 content negotiation, full metric catalog, internal self-telemetry specifications, PromQL alert rules ([`examples/alerts.yaml.example`](examples/alerts.yaml.example)), Alertmanager 0.34+ Slack & Telegram integration ([`examples/alertmanager.yaml.example`](examples/alertmanager.yaml.example)), and production deployment manifests (Systemd, Docker Compose, Kubernetes).
 - [**Diagnostics & Troubleshooting Guide**](docs/diagnostics.md)
   CLI verification (`check`), configuration inspection (`show`), dry-run preview (`export`), terminal diagnostics (`diag`), RF chain imbalance analysis, degraded Ethernet port detection, and logging levels.
 
@@ -68,8 +68,8 @@ docker build -t ubnt-exporter:latest .
 2. Prepare your configuration files:
 
 ```bash
-cp config.yaml.example config.yaml
-cp system.yaml.example system.yaml
+cp examples/config.yaml.example config.yaml
+cp examples/system.yaml.example system.yaml
 ```
 
 3. Create your local `docker-compose.yml` (see [Docker Compose deployment](docs/exporter.md#docker-compose)):
@@ -130,12 +130,12 @@ ubnt-exporter run
 
 ## Configuration Quick View
 
-The exporter provides production-grade configuration and alerting templates:
+The exporter provides production-grade configuration and alerting templates in the [`examples/`](examples/) directory:
 
-1. `config.yaml`: Device inventory, credentials, labels, and collector toggles (see [`config.yaml.example`](config.yaml.example)).
-2. `system.yaml`: Port, scrape intervals, worker limits, and logging (see [`system.yaml.example`](system.yaml.example)).
-3. `alerts.yaml`: Prometheus 3.15+ alerting rules for RF quality, hardware, and daemon self-health (see [`alerts.yaml.example`](alerts.yaml.example)).
-4. `alertmanager.yaml`: Alertmanager 0.34+ notification routing, Slack/Telegram templates, and hierarchical inhibition (see [`alertmanager.yaml.example`](alertmanager.yaml.example)).
+1. `config.yaml`: Device inventory, credentials, labels, and collector toggles (see [`examples/config.yaml.example`](examples/config.yaml.example)).
+2. `system.yaml`: Port, scrape intervals, worker limits, and logging (see [`examples/system.yaml.example`](examples/system.yaml.example)).
+3. `alerts.yaml`: Prometheus 3.15+ alerting rules for RF quality, hardware, and daemon self-health (see [`examples/alerts.yaml.example`](examples/alerts.yaml.example)).
+4. `alertmanager.yaml`: Alertmanager 0.34+ notification routing, Slack/Telegram templates, and hierarchical inhibition (see [`examples/alertmanager.yaml.example`](examples/alertmanager.yaml.example)).
 
 ### Minimal `config.yaml`
 

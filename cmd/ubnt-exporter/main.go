@@ -313,6 +313,17 @@ func cmdExport(sysConf *config.SystemConfig, invConf *config.InventoryConfig, ta
 				fmt.Printf("%s%s %v\n", *mf.Name, labelBlock, *m.Gauge.Value)
 			} else if m.Counter != nil {
 				fmt.Printf("%s%s %v\n", *mf.Name, labelBlock, *m.Counter.Value)
+			} else if m.Histogram != nil {
+				for _, b := range m.Histogram.Bucket {
+					bLabels := append([]string{}, labelStrs...)
+					bLabels = append(bLabels, fmt.Sprintf("le=\"%v\"", *b.UpperBound))
+					fmt.Printf("%s_bucket{%s} %v\n", *mf.Name, strings.Join(bLabels, ","), *b.CumulativeCount)
+				}
+				infLabels := append([]string{}, labelStrs...)
+				infLabels = append(infLabels, "le=\"+Inf\"")
+				fmt.Printf("%s_bucket{%s} %v\n", *mf.Name, strings.Join(infLabels, ","), *m.Histogram.SampleCount)
+				fmt.Printf("%s_sum%s %v\n", *mf.Name, labelBlock, *m.Histogram.SampleSum)
+				fmt.Printf("%s_count%s %v\n", *mf.Name, labelBlock, *m.Histogram.SampleCount)
 			}
 		}
 	}
@@ -412,9 +423,14 @@ func cmdRun(systemPath string, sysConf *config.SystemConfig, invConf *config.Inv
 			return
 		}
 
-		probeStore := metrics.GetStore()
+		probeStore := metrics.NewStore()
+		probeStore.RegisterDynamicLabels(dynamicKeys)
 		targetScraper.Scrape(probeCtx, client, probeStore, true)
-		promhttp.HandlerFor(reg, promOpts).ServeHTTP(w, r)
+
+		probeReg := prometheus.NewRegistry()
+		probeReg.MustRegister(metrics.NewUbiquitiCollector(probeStore))
+		probeReg.MustRegister(probeStore.ScrapeDuration)
+		promhttp.HandlerFor(probeReg, promOpts).ServeHTTP(w, r)
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -604,7 +620,7 @@ func cmdDiag(sysConf *config.SystemConfig, invConf *config.InventoryConfig, targ
 			Capacity:   "-",
 		}
 
-		if _, ok := store.GetDeviceMetric(s.Name, s.IP, "scrape_success"); ok {
+		if val, ok := store.GetDeviceMetric(s.Name, s.IP, "scrape_success"); ok && val == 1.0 {
 			res.Online = true
 
 			if sig, ok := store.GetDeviceMetric(s.Name, s.IP, "ap_signal"); ok {

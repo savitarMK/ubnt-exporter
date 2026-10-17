@@ -113,3 +113,26 @@ func TestBuildInfoGauge(t *testing.T) {
 		t.Errorf("version label '1.1.1' not found in build info: %v", metric.Label)
 	}
 }
+
+func TestNewStoreIsolationAndScrapeErrorPersistence(t *testing.T) {
+	global := metrics.GetStore()
+	global.ClearAllMetrics()
+
+	isolated := metrics.NewStore()
+	isolated.UpdateMetric("cpu_usage", map[string]string{"name": "ISO-AP", "ip": "10.9.9.9"}, 88.0)
+
+	if global.CountMetricDataPoints("cpu_usage") != 0 {
+		t.Errorf("expected global store to remain unaffected by isolated store")
+	}
+
+	isolated.IncrementMetric("scrape_error", map[string]string{"name": "ISO-AP", "ip": "10.9.9.9", "reason": "timeout"}, 1.0)
+	isolated.RemoveDeviceMetrics("ISO-AP", "10.9.9.9")
+
+	if isolated.CountMetricDataPoints("cpu_usage") != 0 {
+		t.Errorf("expected cpu_usage to be purged by RemoveDeviceMetrics")
+	}
+	errVal, foundErr := isolated.GetDeviceMetric("ISO-AP", "10.9.9.9", "scrape_error")
+	if !foundErr || errVal != 1.0 {
+		t.Errorf("expected scrape_error counter to be preserved across RemoveDeviceMetrics, got %v (found: %v)", errVal, foundErr)
+	}
+}

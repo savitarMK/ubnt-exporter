@@ -82,7 +82,7 @@ ubnt-exporter --cfg-dir /etc/ubnt-exporter/staging check
 
 ## Device Inventory (`config.yaml`)
 
-A template is provided in `config.yaml.example`.
+A template is provided in [`examples/config.yaml.example`](../examples/config.yaml.example).
 
 ### Complete `config.yaml` Example
 
@@ -244,7 +244,7 @@ If credentials are omitted from both `config.yaml` and `credentials_file`, the e
 
 ## Server & Runtime Options (`system.yaml`)
 
-A template is provided in `system.yaml.example`.
+A template is provided in [`examples/system.yaml.example`](../examples/system.yaml.example).
 
 ### Complete `system.yaml` Example
 

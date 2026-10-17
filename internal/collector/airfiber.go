@@ -324,6 +324,13 @@ func ProcessAF5XHD(
 								if score, ok := localLink["linkScore"].(map[string]any); ok {
 									addMetric("af_link_score_dl", score, "dl", apLabels)
 									addMetric("af_link_score_ul", score, "ul", apLabels)
+									if totalScore, hasTotal := score["linkScore"]; hasTotal && totalScore != nil {
+										addMetric("af_link_score", score, "linkScore", apLabels)
+									} else if dlRaw, hasDL := score["dl"]; hasDL && dlRaw != nil {
+										if ulRaw, hasUL := score["ul"]; hasUL && ulRaw != nil {
+											store.UpdateMetric("af_link_score", apLabels, (utils.SafeFloat(dlRaw)+utils.SafeFloat(ulRaw))/2.0)
+										}
+									}
 								}
 
 								if cinr, ok := localLink["cinr"].(map[string]any); ok {
@@ -336,7 +343,11 @@ func ProcessAF5XHD(
 									addMetric("af_nss_ul", nss, "ul", apLabels)
 								}
 
-								if mcs, ok := localLink["mcs"].(map[string]any); ok {
+								mcsMap, okMCS := localLink["mcs"].(map[string]any)
+								if !okMCS || mcsMap == nil {
+									mcsMap, _ = localLink["modulation"].(map[string]any)
+								}
+								if mcsMap != nil {
 									txLabels := make(map[string]string, len(apLabels)+1)
 									rxLabels := make(map[string]string, len(apLabels)+1)
 									for k, v := range apLabels {
@@ -346,10 +357,10 @@ func ProcessAF5XHD(
 									txLabels["direction"] = "tx"
 									rxLabels["direction"] = "rx"
 
-									addMetric("af_mcs_index", mcs, "txIdx", txLabels)
-									addMetric("af_mcs_index", mcs, "rxIdx", rxLabels)
-									addMetric("af_modulation_rate", mcs, "txRate", txLabels)
-									addMetric("af_modulation_rate", mcs, "rxRate", rxLabels)
+									addMetric("af_mcs_index", mcsMap, "txIdx", txLabels)
+									addMetric("af_mcs_index", mcsMap, "rxIdx", rxLabels)
+									addMetric("af_modulation_rate", mcsMap, "txRate", txLabels)
+									addMetric("af_modulation_rate", mcsMap, "rxRate", rxLabels)
 								}
 
 								if chains, ok := localLink["signalPerChain"].([]any); ok && len(chains) >= 2 {

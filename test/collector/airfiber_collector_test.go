@@ -108,6 +108,10 @@ func TestProcessAF5XHD(t *testing.T) {
 									"txRate": 10.5,
 									"rxRate": 12.0,
 								},
+								"linkScore": map[string]any{
+									"dl": 96.0,
+									"ul": 98.0,
+								},
 								"timeFraction": map[string]any{
 									"rx": 50.0,
 									"tx": 50.0,
@@ -219,5 +223,11 @@ func TestProcessAF5XHD(t *testing.T) {
 	}
 	if sink.metrics["peer_signal_delta_ideal"] != -7.0 {
 		t.Errorf("expected peer_signal_delta_ideal -7.0, got %v", sink.metrics["peer_signal_delta_ideal"])
+	}
+	if sink.metrics["af_link_score"] != 97.0 {
+		t.Errorf("expected af_link_score 97.0, got %v", sink.metrics["af_link_score"])
+	}
+	if sink.metrics["af_modulation_rate"] != 12.0 {
+		t.Errorf("expected af_modulation_rate 12.0, got %v", sink.metrics["af_modulation_rate"])
 	}
 }

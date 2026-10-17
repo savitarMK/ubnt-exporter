@@ -58,7 +58,18 @@ func TestProcessSystem(t *testing.T) {
 func TestProcessSystem_MissingFields_DebugLogging(t *testing.T) {
 	origLevel := logger.GetLevel()
 	logger.SetLevel("DEBUG")
-	defer logger.SetLevel(string(rune(origLevel)))
+	defer func() {
+		switch origLevel {
+		case logger.LevelDebug:
+			logger.SetLevel("DEBUG")
+		case logger.LevelWarn:
+			logger.SetLevel("WARN")
+		case logger.LevelError:
+			logger.SetLevel("ERROR")
+		default:
+			logger.SetLevel("INFO")
+		}
+	}()
 
 	var buf bytes.Buffer
 	logger.SetOutput(&buf)

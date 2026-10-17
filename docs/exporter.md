@@ -346,7 +346,7 @@ All Prometheus alerting rules follow a standardized taxonomy:
 
 ### Production PromQL Alert Catalog
 
-A complete rules configuration is available in [`alerts.yaml.example`](../alerts.yaml.example).
+A complete rules configuration is available in [`examples/alerts.yaml.example`](../examples/alerts.yaml.example).
 
 ```yaml
 groups:
@@ -563,7 +563,7 @@ inhibit_rules:
       alertname: "UbntDeviceDown"
     target_match_re:
       alertname: "UbntWeakSignal|UbntRFChainImbalance|UbntHighNoiseFloor"
-    equal: ["name", "ip"]
+    equal: ["inhibit_group"]
 
   # 2. Backhaul link down suppresses all dependent radio alerts on that tower
   - source_match:
@@ -678,7 +678,7 @@ receivers:
           bearer_token: "REPLACE_WITH_WISP_CRM_TOKEN"
 ```
 
-A complete configuration template is provided in [`alertmanager.yaml.example`](../alertmanager.yaml.example).
+A complete configuration template is provided in [`examples/alertmanager.yaml.example`](../examples/alertmanager.yaml.example).
 
 ---
 
