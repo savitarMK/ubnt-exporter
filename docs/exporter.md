@@ -36,6 +36,14 @@ The `ubnt-exporter` provides native Prometheus and OpenMetrics endpoints for col
   - [Docker Compose](#docker-compose)
   - [Kubernetes Manifest](#kubernetes-manifest)
 
+> [!NOTE]
+> **Consolidated Templates Directory:**
+> All example configuration and alerting files are maintained in the dedicated [`examples/`](../examples/) folder:
+> - [`examples/config.yaml.example`](../examples/config.yaml.example): Radio inventory and credentials.
+> - [`examples/system.yaml.example`](../examples/system.yaml.example): Daemon runtime, timeouts, and logging formats.
+> - [`examples/alerts.yaml.example`](../examples/alerts.yaml.example): Production Prometheus 3.15+ alert rules.
+> - [`examples/alertmanager.yaml.example`](../examples/alertmanager.yaml.example): Alertmanager 0.34+ routing and templates.
+
 ---
 
 ## Overview
@@ -169,6 +177,13 @@ All metrics are exposed with the `ubnt_` prefix.
 | `ubnt_ap_uptime_seconds` | Gauge | Seconds | Target radio operating system uptime in seconds. |
 | `ubnt_device_power_time_seconds` | Gauge | Seconds | Device uptime since cold power-on in seconds (AirMAX & AirFiber). |
 | `ubnt_af_power_time_seconds` | Gauge | Seconds | Legacy alias for cold power uptime (AirFiber). |
+| `ubnt_device_gps_dimension` | Gauge | Dimension | Local GPS fix dimension (`0` = none, `2` = 2D, `3` = 3D). |
+| `ubnt_device_gps_altitude_meters` | Gauge | Meters | Local GPS altitude above sea level in meters. |
+| `ubnt_device_gps_satellites` | Gauge | Count | Number of GPS satellites tracked by the local device. |
+| `ubnt_device_gps_dop` | Gauge | Factor | Local GPS Dilution of Precision (DOP). |
+| `ubnt_device_gps_time_sync_enabled` | Gauge | State | Local GPS time synchronization enabled (`1` = true, `0` = false). |
+| `ubnt_device_ntp_sync_enabled` | Gauge | State | Local NTP client time synchronization enabled (`1` = true, `0` = false). |
+| `ubnt_device_ntp_last_sync_timestamp_seconds` | Gauge | Timestamp | Unix epoch timestamp in seconds of the last local NTP synchronization. |
 
 ### Wireless Access Point Metrics
 
@@ -221,6 +236,13 @@ Station metrics include the following identification labels: `ap_name`, `ap_ip`,
 | `ubnt_peer_remote_chain_imbalance_db` | Gauge | dB | Absolute chain delta measured at the remote station. |
 | `ubnt_peer_remote_antenna_gain_dbi` | Gauge | dBi | Remote antenna gain reported by station. |
 | `ubnt_peer_remote_cable_loss_db` | Gauge | dB | Remote antenna cable loss in dB. |
+| `ubnt_peer_gps_dimension` | Gauge | Dimension | Remote peer GPS fix dimension (`0` = none, `2` = 2D, `3` = 3D). |
+| `ubnt_peer_gps_altitude_meters` | Gauge | Meters | Remote peer GPS altitude above sea level in meters. |
+| `ubnt_peer_gps_satellites` | Gauge | Count | Number of GPS satellites tracked by the remote peer. |
+| `ubnt_peer_gps_dop` | Gauge | Factor | Remote peer GPS Dilution of Precision (DOP). |
+| `ubnt_peer_gps_time_sync_enabled` | Gauge | State | Remote peer GPS time synchronization enabled (`1` = true, `0` = false). |
+| `ubnt_peer_ntp_sync_enabled` | Gauge | State | Remote peer NTP client time synchronization enabled (`1` = true, `0` = false). |
+| `ubnt_peer_ntp_last_sync_timestamp_seconds` | Gauge | Timestamp | Unix epoch timestamp in seconds of the last remote peer NTP synchronization. |
 | `ubnt_peer_mcs_tx_index` | Gauge | Index | Modulation and Coding Scheme (MCS) index used for transmission. |
 | `ubnt_peer_mcs_rx_index` | Gauge | Index | MCS index used for reception. |
 | `ubnt_peer_mcs_ideal_tx_index` | Gauge | Index | Theoretical ideal MCS index for transmission. |
@@ -273,10 +295,11 @@ Station metrics include the following identification labels: `ap_name`, `ap_ip`,
 
 ### Network Interface Metrics
 
-All interface metrics include the `interface` label (e.g. `eth0`, `eth1`, `ath0`).
+All interface metrics include the `interface` label (e.g. `eth0`, `eth1`, `ath0`, `ath0/0`, `ath0.99`). In addition, `ubnt_iface_info` exposes `interface_type` (`ethernet`, `wireless`, `bridge`, `vlan`), `parent_interface` (e.g. `ath0` for `ath0.99` or `ath0/0`), and `vlan_id` (e.g. `99` for `ath0.99`).
 
 | Metric Name | Type | Unit | Description |
 | :--- | :--- | :--- | :--- |
+| `ubnt_iface_info` | Gauge | Info | Interface metadata: `interface`, `interface_name`, `mac`, `interface_type`, `parent_interface`, `vlan_id`. Value is `1`. |
 | `ubnt_iface_rx_bytes_total` | Counter | Bytes | Total bytes received on the interface. |
 | `ubnt_iface_tx_bytes_total` | Counter | Bytes | Total bytes transmitted on the interface. |
 | `ubnt_iface_rx_packets_total` | Counter | Packets | Total packets received. |
@@ -346,7 +369,7 @@ All Prometheus alerting rules follow a standardized taxonomy:
 
 ### Production PromQL Alert Catalog
 
-A complete rules configuration is available in [`alerts.yaml.example`](../alerts.yaml.example).
+A complete rules configuration is available in [`examples/alerts.yaml.example`](../examples/alerts.yaml.example).
 
 ```yaml
 groups:
@@ -563,7 +586,7 @@ inhibit_rules:
       alertname: "UbntDeviceDown"
     target_match_re:
       alertname: "UbntWeakSignal|UbntRFChainImbalance|UbntHighNoiseFloor"
-    equal: ["name", "ip"]
+    equal: ["inhibit_group"]
 
   # 2. Backhaul link down suppresses all dependent radio alerts on that tower
   - source_match:
@@ -678,7 +701,7 @@ receivers:
           bearer_token: "REPLACE_WITH_WISP_CRM_TOKEN"
 ```
 
-A complete configuration template is provided in [`alertmanager.yaml.example`](../alertmanager.yaml.example).
+A complete configuration template is provided in [`examples/alertmanager.yaml.example`](../examples/alertmanager.yaml.example).
 
 ---
 

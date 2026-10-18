@@ -10,33 +10,15 @@ import (
 	"ubnt-exporter/internal/utils"
 )
 
-// ProcessWireless processes AirMAX / LTU device wireless statistics.
+// ProcessWireless processes AirMAX / LTU access point wireless radio statistics.
 func ProcessWireless(
 	ctx context.Context,
 	dataRoot map[string]any,
 	apLabels map[string]string,
-	collectorsConf map[string]bool,
+	_ map[string]bool,
 	store metrics.MetricSink,
 ) {
 	devName := getDeviceName(apLabels)
-
-	if isCollectorEnabled(collectorsConf, "system") {
-		runCollectorTimed("system", func() {
-			ProcessSystem(ctx, dataRoot, apLabels, store)
-		})
-	}
-
-	if isCollectorEnabled(collectorsConf, "interfaces") {
-		runCollectorTimed("interfaces", func() {
-			ProcessInterfaces(ctx, dataRoot, apLabels, store)
-		})
-	}
-
-	if isCollectorEnabled(collectorsConf, "peers") {
-		runCollectorTimed("peers", func() {
-			ProcessPeers(ctx, dataRoot, apLabels, store)
-		})
-	}
 
 	runCollectorTimed("wireless", func() {
 		labels := make(map[string]string, len(apLabels))
@@ -50,6 +32,13 @@ func ProcessWireless(
 			return
 		}
 
+		if sUptime, exists := wireless["serviceUptime"]; exists && sUptime != nil {
+			store.UpdateMetric("ap_service_uptime", labels, utils.SafeFloat(sUptime))
+		}
+		if sTime, exists := wireless["serviceTime"]; exists && sTime != nil {
+			store.UpdateMetric("ap_service_time", labels, utils.SafeFloat(sTime))
+		}
+
 		peersList, _ := wireless["peers"].([]any)
 		radiosList, hasRadios := wireless["radios"].([]any)
 		if !hasRadios || len(radiosList) == 0 {
@@ -58,27 +47,39 @@ func ProcessWireless(
 
 		if len(radiosList) > 0 {
 			if mainRadio, ok := radiosList[0].(map[string]any); ok {
+				noiseRecorded := false
 				if len(peersList) > 0 {
 					if firstPeer, ok := peersList[0].(map[string]any); ok {
 						if localList, ok := firstPeer["local"].([]any); ok && len(localList) > 0 {
 							if localData, ok := localList[0].(map[string]any); ok {
 								if linkQual, ok := localData["linkQuality"].(map[string]any); ok {
-									if noiseRaw, has := linkQual["noiseFloor"]; has && noiseRaw != nil {
+									noiseRaw, hasNoise := linkQual["noiseFloor"]
+									sigRaw, hasSig := linkQual["signal"]
+
+									if hasNoise && noiseRaw != nil {
 										store.UpdateMetric("ap_noise", labels, utils.SafeFloat(noiseRaw))
+										noiseRecorded = true
 									} else {
 										logger.DebugContext(ctx, devName, "Collector 'wireless': 'noiseFloor' field missing in linkQuality")
 									}
-									if sigRaw, has := linkQual["signal"]; has && sigRaw != nil {
+									if hasSig && sigRaw != nil {
 										store.UpdateMetric("ap_signal", labels, utils.SafeFloat(sigRaw))
 									} else {
 										logger.DebugContext(ctx, devName, "Collector 'wireless': 'signal' field missing in linkQuality")
 									}
-									if snrRaw, has := linkQual["snr"]; has && snrRaw != nil {
+									if snrRaw, hasSNR := linkQual["snr"]; hasSNR && snrRaw != nil {
 										store.UpdateMetric("ap_snr", labels, utils.SafeFloat(snrRaw))
+									} else if hasSig && sigRaw != nil && hasNoise && noiseRaw != nil {
+										store.UpdateMetric("ap_snr", labels, utils.SafeFloat(sigRaw)-utils.SafeFloat(noiseRaw))
 									}
 								}
 							}
 						}
+					}
+				}
+				if !noiseRecorded {
+					if noiseRaw, has := mainRadio["noiseFloor"]; has && noiseRaw != nil {
+						store.UpdateMetric("ap_noise", labels, utils.SafeFloat(noiseRaw))
 					}
 				}
 
@@ -92,10 +93,10 @@ func ProcessWireless(
 					logger.DebugContext(ctx, devName, "Collector 'wireless': 'linkState' field missing or invalid in main radio")
 				}
 
-				if sUptime, exists := wireless["serviceUptime"]; exists && sUptime != nil {
-					store.UpdateMetric("ap_service_uptime", labels, utils.SafeFloat(sUptime))
-				} else if sUptime, exists := mainRadio["serviceUptime"]; exists && sUptime != nil {
-					store.UpdateMetric("ap_service_uptime", labels, utils.SafeFloat(sUptime))
+				if _, exists := wireless["serviceUptime"]; !exists {
+					if sUptime, has := mainRadio["serviceUptime"]; has && sUptime != nil {
+						store.UpdateMetric("ap_service_uptime", labels, utils.SafeFloat(sUptime))
+					}
 				}
 
 				if freqData, ok := mainRadio["frequency"].(map[string]any); ok {
@@ -119,6 +120,16 @@ func ProcessWireless(
 				}
 
 				if dfs, ok := mainRadio["dfs"].(map[string]any); ok {
+					if enabledVal, hasEnabled := dfs["enabled"]; hasEnabled && enabledVal != nil {
+						val := 0.0
+						if enabledVal == true || utils.SafeFloat(enabledVal) == 1.0 {
+							val = 1.0
+						}
+						store.UpdateMetric("ap_dfs_enabled", labels, val)
+					}
+					if cacDur, hasDur := dfs["cacDuration"]; hasDur && cacDur != nil {
+						store.UpdateMetric("ap_dfs_cac_duration", labels, utils.SafeFloat(cacDur))
+					}
 					cacRem := utils.SafeFloat(dfs["cacRemaining"])
 					store.UpdateMetric("ap_dfs_cac_rem", labels, cacRem)
 					dfsStatus := 0.0
@@ -140,7 +151,8 @@ func ProcessWireless(
 	})
 }
 
-func isCollectorEnabled(conf map[string]bool, name string) bool {
+// IsCollectorEnabled returns whether a collector module is enabled in the configuration map.
+func IsCollectorEnabled(conf map[string]bool, name string) bool {
 	if conf == nil {
 		return true
 	}

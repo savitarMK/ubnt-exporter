@@ -116,6 +116,35 @@ var ValidLogLevels = map[string]struct{}{
 	"ERROR":   {},
 }
 
+// ValidCollectorNames lists all recognized telemetry collector module names.
+var ValidCollectorNames = map[string]struct{}{
+	"system":     {},
+	"interfaces": {},
+	"wireless":   {},
+	"peers":      {},
+	"airfiber":   {},
+}
+
+// IsValidPrometheusLabelName checks whether a label key conforms to the Prometheus data model
+// ([a-zA-Z_][a-zA-Z0-9_]*) and does not use reserved internal prefixes (__).
+func IsValidPrometheusLabelName(name string) bool {
+	if name == "" || strings.HasPrefix(name, "__") {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		isAlpha := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+		isDigit := c >= '0' && c <= '9'
+		if i == 0 && !isAlpha {
+			return false
+		}
+		if !isAlpha && !isDigit {
+			return false
+		}
+	}
+	return true
+}
+
 // DefaultSystemConfig returns a SystemConfig populated with default values.
 func DefaultSystemConfig() *SystemConfig {
 	return &SystemConfig{
@@ -158,7 +187,9 @@ func DefaultSystemConfig() *SystemConfig {
 
 // LoadSystemConfig reads and parses system.yaml.
 func LoadSystemConfig(filename string) (*SystemConfig, error) {
-	data, err := os.ReadFile(filename)
+	cleanPath := filepath.Clean(filename)
+	// #nosec G304 -- configuration file path is supplied by the administrator via CLI or standard search paths
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", filename, err)
 	}
@@ -173,7 +204,9 @@ func LoadSystemConfig(filename string) (*SystemConfig, error) {
 
 // LoadInventoryConfig reads and parses config.yaml.
 func LoadInventoryConfig(filename string) (*InventoryConfig, error) {
-	data, err := os.ReadFile(filename)
+	cleanPath := filepath.Clean(filename)
+	// #nosec G304 -- inventory file path is supplied by the administrator via CLI or standard search paths
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", filename, err)
 	}
@@ -193,9 +226,11 @@ func LoadInventoryConfig(filename string) (*InventoryConfig, error) {
 	if inv.Defaults.CredentialsFile != "" {
 		credsPath := inv.Defaults.CredentialsFile
 		if !filepath.IsAbs(credsPath) {
-			credsPath = filepath.Join(filepath.Dir(filename), credsPath)
+			credsPath = filepath.Join(filepath.Dir(cleanPath), credsPath)
 		}
-		cData, cErr := os.ReadFile(credsPath)
+		cleanCredsPath := filepath.Clean(credsPath)
+		// #nosec G304 -- credentials_file path is explicitly configured by administrator in config.yaml
+		cData, cErr := os.ReadFile(cleanCredsPath)
 		if cErr != nil {
 			return nil, fmt.Errorf("reading credentials_file %s: %w", credsPath, cErr)
 		}
@@ -469,6 +504,9 @@ func ValidateConfig(sys *SystemConfig, inv *InventoryConfig) []string {
 	if sys.Performance.SocketTimeout < 1 {
 		errs = append(errs, fmt.Sprintf("invalid performance.socket_timeout: %d (must be >= 1s)", sys.Performance.SocketTimeout))
 	}
+	if sys.Performance.SocketTimeout > 0 && sys.Performance.RequestTimeout > 0 && sys.Performance.SocketTimeout > sys.Performance.RequestTimeout {
+		errs = append(errs, fmt.Sprintf("invalid performance.socket_timeout (%ds): cannot exceed performance.request_timeout (%ds)", sys.Performance.SocketTimeout, sys.Performance.RequestTimeout))
+	}
 	if sys.Performance.FailureBackoff < 0 {
 		errs = append(errs, fmt.Sprintf("invalid performance.failure_backoff: %d (must be >= 0s)", sys.Performance.FailureBackoff))
 	}
@@ -539,6 +577,21 @@ func ValidateConfig(sys *SystemConfig, inv *InventoryConfig) []string {
 		return errs
 	}
 
+	for colName := range inv.EnabledCollectors {
+		if _, ok := ValidCollectorNames[colName]; !ok {
+			errs = append(errs, fmt.Sprintf("unknown collector %q in global enabled_collectors (valid: system, interfaces, wireless, peers, airfiber)", colName))
+		}
+	}
+
+	for k := range inv.Defaults.Labels {
+		lowerK := strings.ToLower(strings.TrimSpace(k))
+		if lowerK == "name" || lowerK == "ip" {
+			errs = append(errs, fmt.Sprintf("defaults.labels contains reserved base label %q", k))
+		} else if !IsValidPrometheusLabelName(k) {
+			errs = append(errs, fmt.Sprintf("defaults.labels contains invalid Prometheus label name %q (must match [a-zA-Z_][a-zA-Z0-9_]*)", k))
+		}
+	}
+
 	seenIPs := make(map[string]string)   // normalized IP -> dev.Name
 	seenNames := make(map[string]string) // name -> dev.IP
 
@@ -565,6 +618,12 @@ func ValidateConfig(sys *SystemConfig, inv *InventoryConfig) []string {
 			}
 		}
 
+		for colName := range dev.EnabledCollectors {
+			if _, ok := ValidCollectorNames[colName]; !ok {
+				errs = append(errs, fmt.Sprintf("device '%s' has unknown collector %q in enabled_collectors (valid: system, interfaces, wireless, peers, airfiber)", dev.Name, colName))
+			}
+		}
+
 		// Detect device configuration properties accidentally placed inside labels
 		reservedKeys := map[string]string{
 			"ssl":                "ssl (boolean)",
@@ -576,9 +635,18 @@ func ValidateConfig(sys *SystemConfig, inv *InventoryConfig) []string {
 			lowerK := strings.ToLower(strings.TrimSpace(k))
 			if desc, isReserved := reservedKeys[lowerK]; isReserved {
 				errs = append(errs, fmt.Sprintf("device '%s' has reserved parameter %s placed inside 'labels'; configure it directly under device instead of under 'labels'", dev.Name, desc))
+				continue
 			}
 			if strings.Contains(lowerK, "override") || strings.Contains(lowerK, "optional") {
 				errs = append(errs, fmt.Sprintf("device '%s' has unexpected label %q; ensure comment markers '#' were not omitted from example configuration", dev.Name, k))
+				continue
+			}
+			if lowerK == "name" || lowerK == "ip" {
+				errs = append(errs, fmt.Sprintf("device '%s' has reserved base label %q in 'labels'", dev.Name, k))
+				continue
+			}
+			if !IsValidPrometheusLabelName(k) {
+				errs = append(errs, fmt.Sprintf("device '%s' has invalid Prometheus label name %q (must match [a-zA-Z_][a-zA-Z0-9_]*)", dev.Name, k))
 			}
 		}
 	}
@@ -626,7 +694,8 @@ func ResolveConfigPaths(cfgDir, customConfig, customSystem string) (string, stri
 }
 
 func fileExists(p string) bool {
-	info, err := os.Stat(p)
+	// #nosec G703 -- path checking for config discovery is performed on administrator-specified search paths
+	info, err := os.Stat(filepath.Clean(p))
 	return err == nil && !info.IsDir()
 }
 

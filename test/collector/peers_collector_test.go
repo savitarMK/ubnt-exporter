@@ -205,3 +205,145 @@ func TestProcessPeers(t *testing.T) {
 		t.Errorf("expected peer_rx_pps 2.0, got %v", sink.metrics["peer_rx_pps"])
 	}
 }
+
+func TestProcessPeers_AirMaxAC_FullPayload(t *testing.T) {
+	sink := newMockMetricSink()
+	apLabels := map[string]string{"name": "ap-ac-sector", "ip": "10.0.4.155"}
+
+	data := map[string]any{
+		"wireless": map[string]any{
+			"peers": []any{
+				map[string]any{
+					"common": map[string]any{
+						"hostname":      "Blanca Flor Fernandez Martinez [Nativitas]",
+						"mgmtIp":        "100.100.106.18",
+						"uptime":        593292.0,
+						"distance":      900.0,
+						"powerTime":     593291.0,
+						"serviceUptime": 592833.0,
+						"serviceTime":   593181.0,
+						"identification": map[string]any{
+							"mac":             "24:5a:4c:d8:ef:74",
+							"product":         "LiteBeam 5AC",
+							"model":           "LBE-5AC-Gen2",
+							"family":          "airmax-ac",
+							"firmwareVersion": "8.7.15",
+							"firmware":        "WA.ar934x.v8.7.15.47952.250103.1017",
+						},
+						"cpu": []any{map[string]any{"usage": 7.0}},
+						"ram": map[string]any{"usage": 58.0, "free": 26607616.0, "total": 63447040.0},
+						"counters": map[string]any{
+							"rxRate":  23000.0,
+							"txRate":  4000.0,
+							"rxBytes": 51087997214.0,
+							"txBytes": 3019849419.0,
+						},
+					},
+					"local": []any{
+						map[string]any{
+							"id":             "main",
+							"connected":      true,
+							"active":         true,
+							"connectionTime": 248956.0,
+							"linkQuality": map[string]any{
+								"airtime":             map[string]any{"dl": 10.0, "ul": 10.0},
+								"nss":                 map[string]any{"dl": 2.0, "ul": 2.0},
+								"capacity":            map[string]any{"dl": 145080.0, "ul": 143520.0, "dlIdeal": 156000.0, "ulIdeal": 156000.0, "combined": 144300.0, "combinedIdeal": 156000.0},
+								"cinr":                map[string]any{"dl": 31.0, "ul": 34.0},
+								"linkScore":           map[string]any{"dl": 92.0, "ul": 92.0, "dl24": 92.0, "ul24": 92.0},
+								"signal":              -47.0,
+								"idealSignal":         -53.0,
+								"noiseFloor":          -90.0,
+								"signalPerChain":      []any{-55.0, -54.0},
+								"idealSignalPerChain": []any{-53.0, -53.0},
+								"mcs": map[string]any{
+									"txIdx":      8.0,
+									"txIdxIdeal": 8.0,
+									"rxIdx":      8.0,
+									"rxIdxIdeal": 8.0,
+									"rxRate":     8.0,
+									"txRate":     8.0,
+									"rxHistogram": []any{
+										map[string]any{"idx": 7.0, "rate": 6.0, "value": 210.0},
+										map[string]any{"idx": 8.0, "rate": 8.0, "value": 1755706.0},
+									},
+								},
+							},
+						},
+					},
+					"remote": []any{
+						map[string]any{
+							"id":      "main",
+							"antenna": map[string]any{"gain": 23.0, "loss": 0.0},
+							"linkQuality": map[string]any{
+								"outputPower":         map[string]any{"conducted": 18.0, "eirp": 41.0},
+								"serviceUptime":       592833.0,
+								"signal":              -51.0,
+								"idealSignal":         -53.0,
+								"noiseFloor":          -88.0,
+								"signalPerChain":      []any{-52.0, -48.0},
+								"idealSignalPerChain": []any{-53.0, -53.0},
+								"mcs": map[string]any{
+									"rxHistogram": []any{
+										map[string]any{"idx": 7.0, "rate": 6.0, "value": 733.0},
+										map[string]any{"idx": 8.0, "rate": 8.0, "value": 3230936.0},
+									},
+								},
+							},
+							"gps": map[string]any{
+								"fix": false,
+								"lat": 18.417010,
+								"lon": -97.303787,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	collector.ProcessPeers(context.Background(), data, apLabels, sink)
+
+	if sink.metrics["peer_remote_power"] != 18.0 {
+		t.Errorf("expected peer_remote_power 18.0 from remote.linkQuality.outputPower, got %v", sink.metrics["peer_remote_power"])
+	}
+	if sink.metrics["peer_remote_eirp"] != 41.0 {
+		t.Errorf("expected peer_remote_eirp 41.0 from remote.linkQuality.outputPower, got %v", sink.metrics["peer_remote_eirp"])
+	}
+	if sink.metrics["peer_snr"] != 43.0 {
+		t.Errorf("expected calculated peer_snr 43.0 (-47 - -90), got %v", sink.metrics["peer_snr"])
+	}
+	if sink.metrics["peer_remote_snr"] != 37.0 {
+		t.Errorf("expected calculated peer_remote_snr 37.0 (-51 - -88), got %v", sink.metrics["peer_remote_snr"])
+	}
+	if sink.metrics["peer_service_uptime"] != 592833.0 {
+		t.Errorf("expected peer_service_uptime 592833.0, got %v", sink.metrics["peer_service_uptime"])
+	}
+	if sink.metrics["peer_service_time"] != 593181.0 {
+		t.Errorf("expected peer_service_time 593181.0, got %v", sink.metrics["peer_service_time"])
+	}
+	if sink.metrics["peer_connected"] != 1.0 {
+		t.Errorf("expected peer_connected 1.0, got %v", sink.metrics["peer_connected"])
+	}
+	if sink.metrics["peer_active"] != 1.0 {
+		t.Errorf("expected peer_active 1.0, got %v", sink.metrics["peer_active"])
+	}
+	if sink.metrics["peer_ideal_signal_c0"] != -53.0 || sink.metrics["peer_ideal_signal_c1"] != -53.0 {
+		t.Errorf("expected peer_ideal_signal_c0/c1 -53.0, got %v / %v", sink.metrics["peer_ideal_signal_c0"], sink.metrics["peer_ideal_signal_c1"])
+	}
+	if sink.metrics["peer_remote_ideal_signal_c0"] != -53.0 || sink.metrics["peer_remote_ideal_signal_c1"] != -53.0 {
+		t.Errorf("expected peer_remote_ideal_signal_c0/c1 -53.0, got %v / %v", sink.metrics["peer_remote_ideal_signal_c0"], sink.metrics["peer_remote_ideal_signal_c1"])
+	}
+	if sink.metrics["peer_gps_fix"] != 0.0 {
+		t.Errorf("expected peer_gps_fix 0.0, got %v", sink.metrics["peer_gps_fix"])
+	}
+	if sink.metrics["peer_tx_rate_bps"] != 4000.0 || sink.metrics["peer_rx_rate_bps"] != 23000.0 {
+		t.Errorf("expected peer_tx_rate_bps=4000 / peer_rx_rate_bps=23000, got %v / %v", sink.metrics["peer_tx_rate_bps"], sink.metrics["peer_rx_rate_bps"])
+	}
+	if len(sink.records["peer_mcs_rx_packets"]) != 2 || sink.metrics["peer_mcs_rx_packets"] != 1755706.0 {
+		t.Errorf("expected 2 local MCS histogram buckets ending with 1755706, got %v", sink.records["peer_mcs_rx_packets"])
+	}
+	if len(sink.records["peer_remote_mcs_rx_packets"]) != 2 || sink.metrics["peer_remote_mcs_rx_packets"] != 3230936.0 {
+		t.Errorf("expected 2 remote MCS histogram buckets ending with 3230936, got %v", sink.records["peer_remote_mcs_rx_packets"])
+	}
+}

@@ -130,6 +130,9 @@ type Logger struct {
 	dampenThreshold int
 	dampenInterval  time.Duration
 	dampenMap       map[string]*dampenRecord
+
+	ringBuf []string
+	ringMax int
 }
 
 var defaultLogger *Logger
@@ -153,6 +156,8 @@ func Get() *Logger {
 			dampenThreshold: 3,
 			dampenInterval:  300 * time.Second,
 			dampenMap:       make(map[string]*dampenRecord),
+			ringBuf:         make([]string, 0, 500),
+			ringMax:         500,
 		}
 	})
 	return defaultLogger
@@ -204,11 +209,12 @@ func Setup(cfg *config.SystemConfig) {
 	}
 
 	if cfg.Logging.File.Enabled && strings.TrimSpace(cfg.Logging.File.Path) != "" {
-		filePath := cfg.Logging.File.Path
+		filePath := filepath.Clean(cfg.Logging.File.Path)
 		if dir := filepath.Dir(filePath); dir != "" && dir != "." {
 			_ = os.MkdirAll(dir, 0750)
 		}
-		f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
+		// #nosec G304 -- log file path is explicitly configured by administrator in system.yaml
+		f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "WARNING: Could not open log file %q: %v\n", filePath, err)
 		} else {
@@ -341,13 +347,18 @@ func (l *Logger) FormatMessageContext(ctx context.Context, lvl Level, name, msg 
 		cleanMsg := strings.ReplaceAll(msg, "\\", "\\\\")
 		cleanMsg = strings.ReplaceAll(cleanMsg, "|", `\|`)
 		cleanMsg = strings.ReplaceAll(cleanMsg, "\n", " ")
+		comp := ""
+		if name != "" {
+			cleanName := strings.ReplaceAll(name, "|", `\|`)
+			comp = fmt.Sprintf(" sproc=%s", cleanName)
+		}
 		extra := ""
 		if traceID != "" {
 			cleanTrace := strings.ReplaceAll(traceID, "|", `\|`)
 			extra = fmt.Sprintf(" cs1=%s cs1Label=TraceID", cleanTrace)
 		}
-		return fmt.Sprintf("CEF:0|MatiasSegurola|UbiquitiExporter|%s|100|%s|%d|shost=%s msg=%s%s\n",
-			definitions.VERSION, lvlStr, severity, l.hostname, cleanMsg, extra)
+		return fmt.Sprintf("CEF:0|MatiasSegurola|UbiquitiExporter|%s|100|%s|%d|shost=%s%s msg=%s%s\n",
+			definitions.VERSION, lvlStr, severity, l.hostname, comp, cleanMsg, extra)
 
 	case "rfc5424":
 		sevCode := 6
@@ -388,12 +399,16 @@ func (l *Logger) FormatMessageContext(ctx context.Context, lvl Level, name, msg 
 		}
 		pri := (l.facility * 8) + sevCode
 		timestamp := now.Format("Jan 02 15:04:05")
-		if traceID != "" {
-			return fmt.Sprintf("<%d>%s %s ubnt-exporter[%d]: [%s] %s\n",
-				pri, timestamp, l.hostname, l.pid, traceID, msg)
+		callerPrefix := ""
+		if name != "" {
+			callerPrefix = fmt.Sprintf("[%s] ", name)
 		}
-		return fmt.Sprintf("<%d>%s %s ubnt-exporter[%d]: %s\n",
-			pri, timestamp, l.hostname, l.pid, msg)
+		if traceID != "" {
+			return fmt.Sprintf("<%d>%s %s ubnt-exporter[%d]: %s[%s] %s\n",
+				pri, timestamp, l.hostname, l.pid, callerPrefix, traceID, msg)
+		}
+		return fmt.Sprintf("<%d>%s %s ubnt-exporter[%d]: %s%s\n",
+			pri, timestamp, l.hostname, l.pid, callerPrefix, msg)
 
 	case "json":
 		entry := struct {
@@ -434,18 +449,14 @@ func (l *Logger) FormatMessage(lvl Level, name, msg string) string {
 	return l.FormatMessageContext(context.Background(), lvl, name, msg)
 }
 
-func (l *Logger) formatMessage(lvl Level, name, msg string) string {
-	return l.FormatMessage(lvl, name, msg)
-}
-
 // LogContext outputs a message at the specified severity level, correlating context if present.
 func (l *Logger) LogContext(ctx context.Context, lvl Level, name, msg string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	if lvl < l.level {
 		return
 	}
-
-	l.mu.Lock()
-	defer l.mu.Unlock()
 
 	outMsg := msg
 	if l.dampenEnabled {
@@ -483,6 +494,17 @@ func (l *Logger) LogContext(ctx context.Context, lvl Level, name, msg string) {
 	formatted := l.FormatMessageContext(ctx, lvl, name, outMsg)
 	b := []byte(formatted)
 
+	if l.ringMax <= 0 {
+		l.ringMax = 500
+	}
+	line := strings.TrimRight(formatted, "\r\n")
+	if len(l.ringBuf) >= l.ringMax {
+		copy(l.ringBuf, l.ringBuf[1:])
+		l.ringBuf[len(l.ringBuf)-1] = line
+	} else {
+		l.ringBuf = append(l.ringBuf, line)
+	}
+
 	for _, w := range l.writers {
 		_, _ = w.Write(b)
 	}
@@ -496,8 +518,31 @@ func (l *Logger) LogContext(ctx context.Context, lvl Level, name, msg string) {
 	}
 }
 
-func (l *Logger) log(lvl Level, name, msg string) {
-	l.LogContext(context.Background(), lvl, name, msg)
+// GetRecentLogs returns up to limit recent log entries from the in-memory ring buffer,
+// optionally filtered by a case-insensitive substring (such as device name or level).
+func (l *Logger) GetRecentLogs(limit int, filter string) []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	var matched []string
+	lowerFilter := strings.ToLower(strings.TrimSpace(filter))
+	for _, entry := range l.ringBuf {
+		if lowerFilter == "" || strings.Contains(strings.ToLower(entry), lowerFilter) {
+			matched = append(matched, entry)
+		}
+	}
+
+	if limit > 0 && len(matched) > limit {
+		matched = matched[len(matched)-limit:]
+	}
+	res := make([]string, len(matched))
+	copy(res, matched)
+	return res
+}
+
+// GetRecentLogs returns up to limit recent log entries from the global logger's ring buffer.
+func GetRecentLogs(limit int, filter string) []string {
+	return Get().GetRecentLogs(limit, filter)
 }
 
 func (l *Logger) rotateFile() {
@@ -514,7 +559,8 @@ func (l *Logger) rotateFile() {
 		_ = os.Rename(l.filePath, fmt.Sprintf("%s.1", l.filePath))
 	}
 
-	f, err := os.OpenFile(l.filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0640)
+	// #nosec G304 -- log file path is sanitized during Setup from system.yaml
+	f, err := os.OpenFile(filepath.Clean(l.filePath), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err == nil {
 		l.fileWriter = f
 		l.fileCurBytes = 0

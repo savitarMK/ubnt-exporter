@@ -1,4 +1,4 @@
-ARG APP_VERSION=1.1.1
+ARG APP_VERSION=1.1.2
 
 FROM golang:1.27.2-bookworm AS builder
 
@@ -10,27 +10,30 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 COPY VERSION ./
 COPY cmd/ ./cmd/
+COPY cli/ ./cli/
 COPY internal/ ./internal/
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     BUILD_VERSION=$(tr -d '[:space:]' < VERSION) && \
+    BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") && \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-        -ldflags="-s -w -X 'ubnt-exporter/internal/definitions.VERSION=${BUILD_VERSION}'" \
+        -ldflags="-s -w -X 'ubnt-exporter/internal/definitions.VERSION=${BUILD_VERSION}' -X 'ubnt-exporter/internal/definitions.BuildDate=${BUILD_DATE}'" \
         -trimpath \
         -o /build/ubnt-exporter ./cmd/ubnt-exporter
 
 FROM debian:13.7-slim AS runner
 
-ARG APP_VERSION=1.1.1
+ARG APP_VERSION=1.1.2
 
 LABEL org.opencontainers.image.title="ubnt-exporter" \
-      org.opencontainers.image.description="Prometheus exporter for Ubiquiti UniFi and airMAX devices" \
+      org.opencontainers.image.description="Prometheus exporter for Ubiquiti AirMAX (M/AC), LTU, and AirFiber devices" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.licenses="GPL-2.0-only" \
       org.opencontainers.image.base.name="debian:13.7-slim"
 
-ENV GOMEMLIMIT=128MiB
+ENV GOMEMLIMIT=128MiB \
+    GODEBUG=x509negativeserial=1
 
 WORKDIR /app
 
@@ -39,6 +42,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        procps \
         tzdata && \
     rm -rf /var/lib/apt/lists/* && \
     groupadd -g 1000 appgroup && \
