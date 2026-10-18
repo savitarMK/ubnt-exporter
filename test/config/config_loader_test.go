@@ -21,7 +21,7 @@ performance:
 logging:
   level: "DEBUG"
 `
-	if err := os.WriteFile(configFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configFile, []byte(content), 0600); err != nil {
 		t.Fatalf("failed to write test config: %v", err)
 	}
 
@@ -96,8 +96,8 @@ func TestResolveConfigPaths(t *testing.T) {
 	cfg := filepath.Join(tmpDir, "config.yaml")
 	sys := filepath.Join(tmpDir, "system.yaml")
 
-	_ = os.WriteFile(cfg, []byte("defaults:\n"), 0644)
-	_ = os.WriteFile(sys, []byte("server:\n"), 0644)
+	_ = os.WriteFile(cfg, []byte("defaults:\n"), 0600)
+	_ = os.WriteFile(sys, []byte("server:\n"), 0600)
 
 	// Test --cfg-dir override
 	rCfg, rSys := config.ResolveConfigPaths(tmpDir, "other.yaml", "other_sys.yaml")
@@ -110,6 +110,34 @@ func TestResolveConfigPaths(t *testing.T) {
 	if rCfg2 != cfg || rSys2 != sys {
 		t.Errorf("expected explicit existing files to resolve, got %s and %s", rCfg2, rSys2)
 	}
+
+	// Test XDG_CONFIG_HOME fallback when custom paths do not exist
+	xdgDir := t.TempDir()
+	xdgAppDir := filepath.Join(xdgDir, "ubnt-exporter")
+	_ = os.MkdirAll(xdgAppDir, 0750)
+	xdgCfg := filepath.Join(xdgAppDir, "config.yaml")
+	xdgSys := filepath.Join(xdgAppDir, "system.yaml")
+	_ = os.WriteFile(xdgCfg, []byte("defaults:\n"), 0600)
+	_ = os.WriteFile(xdgSys, []byte("server:\n"), 0600)
+
+	t.Setenv("XDG_CONFIG_HOME", xdgDir)
+	rCfg3, rSys3 := config.ResolveConfigPaths("", filepath.Join(tmpDir, "missing1.yaml"), filepath.Join(tmpDir, "missing2.yaml"))
+	if rCfg3 != xdgCfg || rSys3 != xdgSys {
+		t.Errorf("expected XDG_CONFIG_HOME paths %s and %s, got %s and %s", xdgCfg, xdgSys, rCfg3, rSys3)
+	}
+
+	// Test fallback when neither custom nor XDG exist
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, "empty_xdg"))
+	rCfg4, rSys4 := config.ResolveConfigPaths("", "nonexistent_a.yaml", "nonexistent_b.yaml")
+	if rCfg4 != "nonexistent_a.yaml" || rSys4 != "nonexistent_b.yaml" {
+		t.Errorf("expected fallback to original paths, got %s and %s", rCfg4, rSys4)
+	}
+
+	// Test EnforceSystemDefaults alias
+	enforced, err := config.EnforceSystemDefaults("", &config.SystemConfig{})
+	if err != nil || enforced.Server.Port != 8000 {
+		t.Errorf("expected EnforceSystemDefaults port 8000, got %d, err=%v", enforced.Server.Port, err)
+	}
 }
 
 func TestCredentialsFileLoading(t *testing.T) {
@@ -117,6 +145,7 @@ func TestCredentialsFileLoading(t *testing.T) {
 	secretsFile := filepath.Join(tmpDir, "secrets.yaml")
 	configFile := filepath.Join(tmpDir, "config.yaml")
 
+	// #nosec G101 -- test mock credentials file
 	secretsContent := `
 username: "secret_user"
 password: "secret_password"
@@ -128,10 +157,10 @@ devices:
   - name: "Dev1"
     ip: "10.0.0.1"
 `
-	if err := os.WriteFile(secretsFile, []byte(secretsContent), 0644); err != nil {
+	if err := os.WriteFile(secretsFile, []byte(secretsContent), 0600); err != nil {
 		t.Fatalf("failed to write secrets: %v", err)
 	}
-	if err := os.WriteFile(configFile, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(configFile, []byte(configContent), 0600); err != nil {
 		t.Fatalf("failed to write config: %v", err)
 	}
 
@@ -145,5 +174,13 @@ devices:
 	}
 	if inv.Defaults.Password != "secret_password" {
 		t.Errorf("expected password 'secret_password', got %q", inv.Defaults.Password)
+	}
+
+	// Verify error paths on missing/corrupt files
+	if _, err := config.LoadSystemConfig(filepath.Join(tmpDir, "missing_sys.yaml")); err == nil {
+		t.Errorf("expected error loading missing system.yaml")
+	}
+	if _, err := config.LoadInventoryConfig(filepath.Join(tmpDir, "missing_inv.yaml")); err == nil {
+		t.Errorf("expected error loading missing config.yaml")
 	}
 }

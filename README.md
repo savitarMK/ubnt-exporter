@@ -1,6 +1,6 @@
 # ubnt-exporter
 
-[![Release](https://img.shields.io/badge/version-v1.1.1-blue.svg)](VERSION)
+[![Release](https://img.shields.io/badge/version-v1.1.2-blue.svg)](VERSION)
 [![Go Version](https://img.shields.io/badge/go-1.27.2-00ADD8.svg)](go.mod)
 [![Docker Image](https://img.shields.io/badge/docker-debian%3A13.7--slim-2496ED.svg)](Dockerfile)
 [![Prometheus](https://img.shields.io/badge/prometheus-3.15%20ready-E6522C.svg)](https://prometheus.io)
@@ -130,7 +130,15 @@ ubnt-exporter run
 
 ## Configuration Quick View
 
-The exporter provides production-grade configuration and alerting templates in the [`examples/`](examples/) directory:
+The exporter provides production-grade configuration and alerting templates in the dedicated [`examples/`](examples/) directory:
+
+> [!NOTE]
+> **Consolidated Templates Directory (`examples/`):**
+> All configuration files and alert rule templates are organized in their own dedicated directory [`examples/`](examples/):
+> - [`examples/config.yaml.example`](examples/config.yaml.example): Radio inventory (AirMAX AC/M, LTU, AirFiber 5XHD).
+> - [`examples/system.yaml.example`](examples/system.yaml.example): Daemon runtime, timeouts, worker pools, and logging formats.
+> - [`examples/alerts.yaml.example`](examples/alerts.yaml.example): Turnkey Prometheus 3.15+ alerting rules.
+> - [`examples/alertmanager.yaml.example`](examples/alertmanager.yaml.example): Alertmanager 0.34+ routing, Slack & Telegram templates.
 
 1. `config.yaml`: Device inventory, credentials, labels, and collector toggles (see [`examples/config.yaml.example`](examples/config.yaml.example)).
 2. `system.yaml`: Port, scrape intervals, worker limits, and logging (see [`examples/system.yaml.example`](examples/system.yaml.example)).
@@ -211,25 +219,85 @@ For PromQL alert examples and dashboard queries, see the [Prometheus Integration
 
 ---
 
-## Diagnostic CLI Commands
+## Diagnostic CLI & Interactive Container Console
 
-The `ubnt-exporter` executable provides diagnostic utilities for terminal workflows:
+The `ubnt-exporter` executable features a modular command-line interface ([`cli/`](cli/)) providing live diagnostics, schema verification, zero-downtime hot reload, log buffer inspection, and safe linear-time RE2 regular expression queries directly from the host or inside a running container.
+
+### Global Command-Line Flags
+
+Flags can be specified in any order (before or after the command):
+
+| Flag | Short | Default | Description |
+| :--- | :---: | :---: | :--- |
+| `--config <path>` | `-c` | `"config.yaml"` | Path to the inventory configuration file. |
+| `--system <path>` | `-s` | `"system.yaml"` | Path to the daemon runtime configuration file. |
+| `--cfg-dir <path>` | — | — | Directory containing both `config.yaml` and `system.yaml`. |
+| `--target <pattern>` | `-t` | — | Filter target device by name, IP, custom label, or RE2 regex. |
+| `--regex <pattern>` | `-r` | — | Filter metrics or log lines using semantic presets or RE2 patterns. |
+| `--lines <int>` | `-n` | `50` | Number of historical log lines to display in `logs tail`. |
+| `--version` | `-v` | — | Print exporter version (`1.1.2`) and exit. |
+| `--log` | `-log` | — | Display the logging reference manual and exit. |
+| `--help` | `-h` | — | Show contextual help for the application or any subcommand. |
+
+### CLI Subcommands Overview
+
+| Command | Purpose | Network Activity |
+| :--- | :--- | :--- |
+| `run` | Starts the production continuous metrics daemon (`/metrics`, `/probe`, `/logs`). | Continuous daemon |
+| `cli` (or `shell`) | Opens an interactive administrative console (`ubnt-cli>`) inside the container. | Interactive REPL |
+| `check` | Validates YAML syntax, Prometheus label schemas, collector names, and timeouts. | Offline (none) |
+| `show` | Dumps merged in-memory configuration with masked passwords and tokens. | Offline (none) |
+| `reload` | Validates configuration files and sends `SIGHUP` to the active daemon process. | Local IPC (`SIGHUP`) |
+| `test` (or `selftest`) | Runs 4 built-in verification suites (`metrics`, `collectors`, `connectivity`, `endpoint`). | Local & network |
+| `query` (or `q`) | Queries live metrics using semantic presets or RE2 regular expressions. | Active network |
+| `metrics` | Searches the 205 Prometheus metric definitions by name, label, or description. | Offline (none) |
+| `logs` | Tails live daemon logs from the in-memory ring buffer or tests formatters. | Local loopback `/logs` |
+| `diag` | Formats an ASCII link quality table (Signal, Noise, SNR, Chain Delta, Capacity). | Active network |
+| `inspect` | Performs a deep telemetry scrape of a device grouped into 4 functional domains. | Active network |
+| `export` | Performs a one-shot dry-run scrape and prints Prometheus exposition output. | Active network |
+
+### Real-World CLI Examples
 
 ```bash
-# Validate syntax and check for duplicate IPs or indentation errors
-ubnt-exporter check
+# 1. Interactive administrative console inside the running Docker container
+docker exec -it ubnt-exporter ubnt-exporter cli
 
-# Inspect merged configuration with masked credentials
-ubnt-exporter show
+# 2. Syntax & semantic configuration validation before starting or reloading
+docker exec ubnt-exporter ubnt-exporter check
 
-# Execute a one-shot dry-run scrape and output Prometheus metrics to stdout
-ubnt-exporter export
+# 3. Inspect merged runtime configuration with masked passwords
+docker exec ubnt-exporter ubnt-exporter show
 
-# Display live wireless link diagnostics in an ASCII summary table
-ubnt-exporter diag
+# 4. Safe zero-downtime hot configuration reload (validates files and sends SIGHUP)
+docker exec ubnt-exporter ubnt-exporter reload
 
-# View logging manual and severity levels
-ubnt-exporter -log
+# 5. Execute all 4 self-test suites (metrics dictionary, collectors, TLS connectivity, endpoint)
+docker exec ubnt-exporter ubnt-exporter test
+docker exec ubnt-exporter ubnt-exporter test connectivity -t MST4
+
+# 6. Query live metrics using semantic presets (signal, cpu, clients, rf, traffic, gps, errors)
+docker exec ubnt-exporter ubnt-exporter query signal -t MST4
+docker exec ubnt-exporter ubnt-exporter query cpu -t "^MST.*"
+
+# 7. Query live metrics using dynamic RE2 regular expressions
+docker exec ubnt-exporter ubnt-exporter query -r "ubnt_peer_(rx|tx)_bytes|snr" -t MST4
+
+# 8. Search the static Prometheus metric dictionary by RE2 pattern
+docker exec ubnt-exporter ubnt-exporter metrics -r "gps|ntp|vlan"
+
+# 9. Tail recent live daemon logs with line limit and regex filter
+docker exec ubnt-exporter ubnt-exporter logs tail -n 20 -r "ERROR|WARN"
+docker exec ubnt-exporter ubnt-exporter logs status
+docker exec ubnt-exporter ubnt-exporter logs test
+
+# 10. Audit RF link quality, SNR, and chain imbalance (>5 dB warnings highlighted)
+docker exec ubnt-exporter ubnt-exporter diag -t "^MST.*"
+
+# 11. Deep collector-by-collector inspection grouped by subsystem
+docker exec ubnt-exporter ubnt-exporter inspect -t MST4 -r "ath0\.99"
+
+# 12. Dry-run one-shot export to stdout for verification or debugging
+docker exec ubnt-exporter ubnt-exporter export -t MST4
 ```
 
 ---

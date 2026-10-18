@@ -55,6 +55,11 @@ func (b *Buffer) Commit(store *Store, devName, devIP string) {
 	store.ReplaceDeviceMetrics(devName, devIP, b.entries)
 }
 
+// Len returns the number of buffered metric entries.
+func (b *Buffer) Len() int {
+	return len(b.entries)
+}
+
 // Store holds current metric values in memory in a thread-safe manner.
 type Store struct {
 	mu             sync.RWMutex
@@ -113,7 +118,7 @@ func GetStore() *Store {
 	return globalStore
 }
 
-// RegisterDynamicLabels appends dynamic label keys to device_info definition.
+// RegisterDynamicLabels sets dynamic label keys on the device_info definition.
 func (s *Store) RegisterDynamicLabels(dynamicKeys []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -123,17 +128,31 @@ func (s *Store) RegisterDynamicLabels(dynamicKeys []string) {
 		return
 	}
 
-	existing := make(map[string]bool)
-	for _, l := range def.Labels {
-		existing[l] = true
-	}
-
+	newLabels := []string{"name", "ip"}
+	existing := map[string]bool{"name": true, "ip": true}
 	for _, k := range dynamicKeys {
 		if !existing[k] {
-			def.Labels = append(def.Labels, k)
+			newLabels = append(newLabels, k)
 			existing[k] = true
 		}
 	}
+
+	changed := len(newLabels) != len(def.Labels)
+	if !changed {
+		for i := range newLabels {
+			if newLabels[i] != def.Labels[i] {
+				changed = true
+				break
+			}
+		}
+	}
+
+	if changed {
+		delete(s.data, "device_info")
+		delete(s.labelsMap, "device_info")
+	}
+
+	def.Labels = newLabels
 	s.defs["device_info"] = def
 	s.descs["device_info"] = prometheus.NewDesc(def.Name, def.Help, def.Labels, nil)
 }

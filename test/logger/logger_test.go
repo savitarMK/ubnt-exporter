@@ -37,6 +37,9 @@ func TestLoggerFormats(t *testing.T) {
 	if !strings.HasPrefix(msgCEF, "CEF:0|MatiasSegurola|UbiquitiExporter|") {
 		t.Errorf("CEF format missing header prefix: %q", msgCEF)
 	}
+	if !strings.Contains(msgCEF, "sproc=testDevice") {
+		t.Errorf("CEF format missing sproc component identifier: %q", msgCEF)
+	}
 	if !strings.Contains(msgCEF, `Device \| with \| pipe and   newline`) {
 		t.Errorf("CEF format failed to properly escape pipe or newline: %q", msgCEF)
 	}
@@ -120,9 +123,14 @@ func TestLoggerLevelFiltering(t *testing.T) {
 
 func TestLoggerFileWritingAndRotation(t *testing.T) {
 	tmpDir := t.TempDir()
-	logFile := filepath.Join(tmpDir, "test.log")
+	logFile := filepath.Join(tmpDir, "subdir", "test.log")
+	_ = os.MkdirAll(filepath.Dir(logFile), 0750)
+	_ = os.WriteFile(logFile, []byte("initial\n"), 0600)
+	_ = os.Truncate(logFile, 1024*1024-10)
 
 	cfg := config.DefaultSystemConfig()
+	cfg.Logging.Level = "DEBUG"
+	cfg.Logging.SyslogFacility = "unknown_facility"
 	cfg.Logging.Console = false
 	cfg.Logging.File.Enabled = true
 	cfg.Logging.File.Path = logFile
@@ -130,21 +138,33 @@ func TestLoggerFileWritingAndRotation(t *testing.T) {
 	cfg.Logging.File.BackupCount = 2
 	logger.Setup(cfg)
 
-	logger.Info("tester", "Line 1 in file")
-	logger.Info("tester", "Line 2 in file")
+	logger.Debug("tester", "Line 1 triggers rotation")
+	logger.Warn("tester", "Line 2 in new rotated file")
+	logger.Info("tester", "Line 3 in new rotated file")
+
+	recent := logger.GetRecentLogs(2, "tester")
+	if len(recent) != 2 {
+		t.Errorf("expected 2 recent logs from ring buffer, got %d", len(recent))
+	}
 
 	logger.Close()
 
-	content, err := os.ReadFile(logFile)
+	if _, err := os.Stat(logFile + ".1"); err != nil {
+		t.Errorf("expected rotated backup file %s.1 to exist: %v", logFile, err)
+	}
+
+	// #nosec G304 -- test reads generated test file
+	content, err := os.ReadFile(filepath.Clean(logFile))
 	if err != nil {
 		t.Fatalf("failed to read log file: %v", err)
 	}
-	if !strings.Contains(string(content), "Line 1 in file") {
-		t.Errorf("expected file to contain log message, got: %s", string(content))
+	if !strings.Contains(string(content), "Line 2 in new rotated file") {
+		t.Errorf("expected new log file to contain post-rotation message, got: %s", string(content))
 	}
 }
 
 func TestLoggerDynamicLevelUpdate(t *testing.T) {
+	_ = logger.WithTraceID(nil, "nil-ctx-trace") //nolint:staticcheck // testing nil context guard
 	logger.SetLevel("DEBUG")
 	if logger.GetLevel() != logger.LevelDebug {
 		t.Errorf("expected LevelDebug, got %v", logger.GetLevel())
@@ -166,7 +186,7 @@ func TestLoggerContextCorrelation(t *testing.T) {
 	if logger.GetTraceID(ctx) != "trace-xyz-123" {
 		t.Fatalf("expected trace ID 'trace-xyz-123', got %q", logger.GetTraceID(ctx))
 	}
-	if logger.GetTraceID(nil) != "" {
+	if logger.GetTraceID(nil) != "" { //nolint:staticcheck // intentionally testing nil context safety
 		t.Errorf("expected empty trace ID for nil context")
 	}
 
@@ -322,4 +342,16 @@ func TestLoggerFatal(t *testing.T) {
 	if !strings.Contains(buf.String(), "Fatal context failure testing") {
 		t.Errorf("expected log buffer to contain fatal context message, got: %s", buf.String())
 	}
+}
+
+func TestLogger_EdgeCases(_ *testing.T) {
+	// SetDampening with zero/negative values defaults to 3 and 300s
+	logger.SetDampening(true, -1, -1)
+	// ResetDampening with empty string purges all records
+	logger.ResetDampening("")
+	// SetOutput(nil) clears writers
+	l := logger.Get()
+	l.SetOutput(nil)
+	logger.Info("caller", "ignored output")
+	l.SetOutput(os.Stdout)
 }

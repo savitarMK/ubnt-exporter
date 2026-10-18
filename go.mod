@@ -2,6 +2,8 @@ module ubnt-exporter
 
 go 1.27.2
 
+godebug x509negativeserial=1
+
 require (
 	github.com/prometheus/client_golang v1.25.0
 	gopkg.in/yaml.v3 v3.0.1

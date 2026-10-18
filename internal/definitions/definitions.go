@@ -3,7 +3,7 @@ package definitions
 
 var (
 	// VERSION defines the application version, which can be overridden via -ldflags -X.
-	VERSION = "1.1.1"
+	VERSION = "1.1.2"
 	// Revision holds the git commit hash injected during compilation.
 	Revision = "unknown"
 	// Branch holds the git branch name injected during compilation.
@@ -267,6 +267,7 @@ var MetricsDef = map[string]MetricDefinition{
 		Labels: []string{
 			"ap_name", "ap_ip", "peer_name", "peer_ip", "peer_mac",
 			"peer_product", "peer_model", "peer_family", "peer_firmware", "peer_firmware_build",
+			"peer_subsystem_id", "peer_country_code", "peer_net_mode",
 		},
 	},
 	"peer_signal": {
@@ -1029,6 +1030,246 @@ var MetricsDef = map[string]MetricDefinition{
 		Type:   TypeGauge,
 		Name:   "ubnt_peer_tx_pps",
 		Help:   "Packets per second transmitted to the remote station",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"device_timestamp": {
+		Type:   TypeGauge,
+		Name:   "ubnt_device_timestamp_seconds",
+		Help:   "Device internal Unix timestamp in seconds",
+		Labels: []string{"name", "ip"},
+	},
+	"cpu_info": {
+		Type:   TypeInfo,
+		Name:   "ubnt_device_cpu_info",
+		Help:   "Device CPU architecture and identifier metadata",
+		Labels: []string{"name", "ip", "cpu_identifier"},
+	},
+	"ram_used_bytes": {
+		Type:   TypeGauge,
+		Name:   "ubnt_ram_used_bytes",
+		Help:   "Used system RAM in bytes",
+		Labels: []string{"name", "ip"},
+	},
+	"ap_gps_fix": {
+		Type:   TypeGauge,
+		Name:   "ubnt_ap_gps_fix",
+		Help:   "Device GPS fix status (1=fix acquired, 0=no fix)",
+		Labels: []string{"name", "ip"},
+	},
+	"device_temperature": {
+		Type:   TypeGauge,
+		Name:   "ubnt_device_temperature_celsius",
+		Help:   "Device hardware sensor temperature in Celsius",
+		Labels: []string{"name", "ip", "sensor"},
+	},
+	"iface_info": {
+		Type:   TypeInfo,
+		Name:   "ubnt_iface_info",
+		Help:   "Network interface classification and VLAN/bridge metadata",
+		Labels: []string{"name", "ip", "interface", "interface_name", "interface_type", "parent_interface", "vlan_id"},
+	},
+	"iface_enabled": {
+		Type:   TypeGauge,
+		Name:   "ubnt_iface_enabled",
+		Help:   "Interface administrative state (1=enabled, 0=disabled)",
+		Labels: []string{"name", "ip", "interface"},
+	},
+	"iface_plugged": {
+		Type:   TypeGauge,
+		Name:   "ubnt_iface_plugged",
+		Help:   "Interface physical carrier link state (1=plugged, 0=unplugged)",
+		Labels: []string{"name", "ip", "interface"},
+	},
+	"iface_speed": {
+		Type:   TypeGauge,
+		Name:   "ubnt_iface_speed_mbps",
+		Help:   "Interface negotiated link speed in Mbps",
+		Labels: []string{"name", "ip", "interface"},
+	},
+	"iface_duplex": {
+		Type:   TypeGauge,
+		Name:   "ubnt_iface_full_duplex",
+		Help:   "Interface duplex mode (1=full-duplex, 0=half-duplex)",
+		Labels: []string{"name", "ip", "interface"},
+	},
+	"iface_mtu": {
+		Type:   TypeGauge,
+		Name:   "ubnt_iface_mtu_bytes",
+		Help:   "Interface Maximum Transmission Unit (MTU) in bytes",
+		Labels: []string{"name", "ip", "interface"},
+	},
+	"iface_snr": {
+		Type:   TypeGauge,
+		Name:   "ubnt_iface_cable_snr_db",
+		Help:   "Ethernet cable pair SNR in dB",
+		Labels: []string{"name", "ip", "interface"},
+	},
+	"ap_service_time": {
+		Type:   TypeGauge,
+		Name:   "ubnt_ap_service_time_seconds",
+		Help:   "AP total wireless service time in seconds",
+		Labels: []string{"name", "ip"},
+	},
+	"ap_dfs_enabled": {
+		Type:   TypeGauge,
+		Name:   "ubnt_ap_dfs_enabled",
+		Help:   "AP Dynamic Frequency Selection enabled state (1=enabled, 0=disabled)",
+		Labels: []string{"name", "ip"},
+	},
+	"ap_dfs_cac_duration": {
+		Type:   TypeGauge,
+		Name:   "ubnt_ap_dfs_cac_duration_seconds",
+		Help:   "AP DFS Channel Availability Check configured duration in seconds",
+		Labels: []string{"name", "ip"},
+	},
+	"peer_service_uptime": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_service_uptime_seconds",
+		Help:   "Remote station wireless service uptime in seconds",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_service_time": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_service_time_seconds",
+		Help:   "Remote station total wireless service time in seconds",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_connected": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_connected",
+		Help:   "Peer wireless connection state (1=connected, 0=disconnected)",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_active": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_active",
+		Help:   "Peer active traffic state (1=active, 0=inactive)",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_ideal_signal_c0": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_ideal_signal_chain0_dbm",
+		Help:   "Local Ideal Signal Chain 0 in dBm",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_ideal_signal_c1": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_ideal_signal_chain1_dbm",
+		Help:   "Local Ideal Signal Chain 1 in dBm",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_remote_ideal_signal_c0": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_remote_ideal_signal_chain0_dbm",
+		Help:   "Remote Ideal Signal Chain 0 in dBm",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_remote_ideal_signal_c1": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_remote_ideal_signal_chain1_dbm",
+		Help:   "Remote Ideal Signal Chain 1 in dBm",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_gps_fix": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_gps_fix",
+		Help:   "Remote station GPS fix status (1=fix acquired, 0=no fix)",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_tx_rate_bps": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_tx_rate_bps",
+		Help:   "Peer TX traffic rate in bits per second",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_rx_rate_bps": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_rx_rate_bps",
+		Help:   "Peer RX traffic rate in bits per second",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_mcs_rx_packets": {
+		Type:   TypeCounter,
+		Name:   "ubnt_peer_mcs_rx_packets_total",
+		Help:   "Total local received packets per MCS index and modulation rate",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip", "mcs_index", "mcs_rate"},
+	},
+	"peer_remote_mcs_rx_packets": {
+		Type:   TypeCounter,
+		Name:   "ubnt_peer_remote_mcs_rx_packets_total",
+		Help:   "Total remote received packets per MCS index and modulation rate",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip", "mcs_index", "mcs_rate"},
+	},
+	"device_gps_dim": {
+		Type:   TypeGauge,
+		Name:   "ubnt_device_gps_dimension",
+		Help:   "Device GPS fix dimension (2=2D, 3=3D)",
+		Labels: []string{"name", "ip"},
+	},
+	"device_gps_time_sync": {
+		Type:   TypeGauge,
+		Name:   "ubnt_device_gps_time_sync_enabled",
+		Help:   "Device GPS time synchronization state (1=enabled, 0=disabled)",
+		Labels: []string{"name", "ip"},
+	},
+	"device_ntp_sync_enabled": {
+		Type:   TypeGauge,
+		Name:   "ubnt_device_ntp_sync_enabled",
+		Help:   "Device NTP client time synchronization state (1=enabled, 0=disabled)",
+		Labels: []string{"name", "ip"},
+	},
+	"device_ntp_last_sync": {
+		Type:   TypeGauge,
+		Name:   "ubnt_device_ntp_last_sync_timestamp_seconds",
+		Help:   "Device NTP client last synchronization Unix timestamp in seconds",
+		Labels: []string{"name", "ip"},
+	},
+	"peer_gps_alt": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_gps_altitude_meters",
+		Help:   "Remote peer GPS altitude in meters",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_gps_sats": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_gps_satellites",
+		Help:   "Remote peer GPS visible satellites count",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_gps_dop": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_gps_dop",
+		Help:   "Remote peer GPS Dilution of Precision (lower is better)",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_gps_dim": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_gps_dimension",
+		Help:   "Remote peer GPS fix dimension (2=2D, 3=3D)",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_gps_time_sync": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_gps_time_sync_enabled",
+		Help:   "Remote peer GPS time synchronization state (1=enabled, 0=disabled)",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_ntp_sync_enabled": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_ntp_sync_enabled",
+		Help:   "Remote peer NTP client time synchronization state (1=enabled, 0=disabled)",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_ntp_last_sync": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_ntp_last_sync_timestamp_seconds",
+		Help:   "Remote peer NTP client last synchronization Unix timestamp in seconds",
+		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
+	},
+	"peer_remote_rx_efficiency": {
+		Type:   TypeGauge,
+		Name:   "ubnt_peer_remote_rx_efficiency_percent",
+		Help:   "Remote peer RX airtime efficiency percentage",
 		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
 	},
 }

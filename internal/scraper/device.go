@@ -143,6 +143,7 @@ func NewHTTPClient(socketTimeout time.Duration) *http.Client {
 		socketTimeout = 2 * time.Second
 	}
 	transport := &http.Transport{
+		// #nosec G402 -- Ubiquiti AirOS v6/v8 and AirFiber devices use embedded self-signed certificates and legacy TLS 1.0+
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 			MinVersion:         tls.VersionTLS10,
@@ -169,7 +170,7 @@ func NewHTTPClient(socketTimeout time.Duration) *http.Client {
 
 	return &http.Client{
 		Transport: transport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
@@ -192,6 +193,7 @@ func (d *DeviceScraper) login(ctx context.Context, client *http.Client, store *m
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	logger.DebugContext(ctx, d.Name, "Authenticating via POST %s", loginURL)
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.ErrorContext(ctx, d.Name, "Login Unreachable: %v", err)
@@ -209,6 +211,7 @@ func (d *DeviceScraper) login(ctx context.Context, client *http.Client, store *m
 			token = resp.Header.Get("x-auth-token")
 		}
 		d.Token = token
+		logger.DebugContext(ctx, d.Name, "Login OK (HTTP %d, token acquired)", resp.StatusCode)
 		return true, nil
 	}
 
@@ -341,6 +344,7 @@ func (d *DeviceScraper) fetchStatistics(ctx context.Context, client *http.Client
 		req.Header.Set("X-Auth-Token", d.Token)
 	}
 
+	logger.DebugContext(ctx, d.Name, "Fetching statistics via GET %s", url)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, 0, err
@@ -349,6 +353,7 @@ func (d *DeviceScraper) fetchStatistics(ctx context.Context, client *http.Client
 
 	const maxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB safety limit
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodyBytes))
+	logger.DebugContext(ctx, d.Name, "GET %s returned HTTP %d (%d bytes)", url, resp.StatusCode, len(body))
 	return body, resp.StatusCode, err
 }
 
@@ -389,35 +394,49 @@ func (d *DeviceScraper) processData(ctx context.Context, data any, store *metric
 
 	family := utils.DetectDeviceFamily(root)
 
-	switch family {
-	case "airfiber":
-		if enabled, exists := d.EnabledModules["airfiber"]; exists && !enabled {
-			logger.DebugContext(ctx, d.Name, "AirFiber detected but module disabled")
-			return
-		}
-	case "airmax":
-		if enabled, exists := d.EnabledModules["wireless"]; exists && !enabled {
-			logger.DebugContext(ctx, d.Name, "AirMax detected but module disabled")
-			return
-		}
-	}
-
 	buf := metrics.NewBuffer()
 	buf.UpdateMetric("device_info", infoLabels, 1.0)
 
-	switch family {
-	case "airfiber":
-		collector.ProcessAF5XHD(ctx, root, standardLabels, d.EnabledModules, buf)
-	default:
-		collector.ProcessWireless(ctx, root, standardLabels, d.EnabledModules, buf)
+	if collector.IsCollectorEnabled(d.EnabledModules, "system") {
+		collector.RunCollectorTimed("system", func() {
+			collector.ProcessSystem(ctx, root, standardLabels, buf)
+		})
 	}
 
+	if collector.IsCollectorEnabled(d.EnabledModules, "interfaces") {
+		collector.RunCollectorTimed("interfaces", func() {
+			collector.ProcessInterfaces(ctx, root, standardLabels, buf)
+		})
+	}
+
+	if collector.IsCollectorEnabled(d.EnabledModules, "peers") {
+		collector.RunCollectorTimed("peers", func() {
+			collector.ProcessPeers(ctx, root, standardLabels, buf)
+		})
+	}
+
+	switch family {
+	case "airfiber":
+		if collector.IsCollectorEnabled(d.EnabledModules, "airfiber") {
+			collector.ProcessAF5XHD(ctx, root, standardLabels, d.EnabledModules, buf)
+		} else {
+			logger.DebugContext(ctx, d.Name, "AirFiber detected but module disabled")
+		}
+	default:
+		if collector.IsCollectorEnabled(d.EnabledModules, "wireless") {
+			collector.ProcessWireless(ctx, root, standardLabels, d.EnabledModules, buf)
+		} else {
+			logger.DebugContext(ctx, d.Name, "AirMax detected but wireless module disabled")
+		}
+	}
+
+	totalMetrics := buf.Len()
 	buf.Commit(store, d.Name, d.IP)
 
 	if dryRun {
 		logger.InfoContext(ctx, d.Name, "Data processed OK (%s). Labels: %v", family, infoLabels)
 	} else {
-		logger.DebugContext(ctx, d.Name, "Collection OK (%s)", family)
+		logger.DebugContext(ctx, d.Name, "Collection OK (%s): %d metrics committed", family, totalMetrics)
 	}
 }
 

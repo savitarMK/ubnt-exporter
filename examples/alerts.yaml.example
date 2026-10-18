@@ -96,6 +96,18 @@ groups:
           description: "DFS radar event detected on {{ $labels.name }}. Radio is scanning channel availability with CAC countdown active."
           runbook_url: "docs/diagnostics.md#dfs-radar-cac-and-lockout-timers"
 
+      - alert: UbntLowSNR
+        expr: ubnt_peer_snr_db < 18
+        for: 10m
+        labels:
+          severity: warning
+          target_type: cpe_station
+          inhibit_group: "{{ $labels.ap_name }}"
+        annotations:
+          summary: "Low RF Signal-to-Noise Ratio (SNR) on {{ $labels.peer_name }}"
+          description: "SNR on station {{ $labels.peer_name }} connected to {{ $labels.ap_name }} is {{ $value | printf \"%.1f\" }} dB (threshold: 18 dB)."
+          runbook_url: "docs/diagnostics.md#station-health--signal-auditing"
+
   # =========================================================================
   # 3. Target Hardware & Ethernet Subsystem Alerts
   # =========================================================================

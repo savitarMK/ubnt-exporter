@@ -1,6 +1,8 @@
 package config_test
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -144,6 +146,62 @@ func TestParseListenAddresses(t *testing.T) {
 		{
 			name:        "Invalid address string",
 			input:       "invalid@@host",
+			defaultPort: 8000,
+			expected:    nil,
+			wantErr:     true,
+		},
+		{
+			name:        "Empty unix socket path",
+			input:       "unix://",
+			defaultPort: 8000,
+			expected:    nil,
+			wantErr:     true,
+		},
+		{
+			name:        "Invalid colon port format",
+			input:       ":abc",
+			defaultPort: 8000,
+			expected:    nil,
+			wantErr:     true,
+		},
+		{
+			name:        "Digits port out of range",
+			input:       "99999",
+			defaultPort: 8000,
+			expected:    nil,
+			wantErr:     true,
+		},
+		{
+			name:        "Invalid port in host:port",
+			input:       "127.0.0.1:abc",
+			defaultPort: 8000,
+			expected:    nil,
+			wantErr:     true,
+		},
+		{
+			name:        "Hostname without port",
+			input:       "localhost",
+			defaultPort: 8000,
+			expected:    []string{"localhost:8000"},
+			wantErr:     false,
+		},
+		{
+			name:        "Hostname with port",
+			input:       "radio.site.net:8080",
+			defaultPort: 8000,
+			expected:    []string{"radio.site.net:8080"},
+			wantErr:     false,
+		},
+		{
+			name:        "Invalid hostname starting with hyphen",
+			input:       "-badhost.net:8080",
+			defaultPort: 8000,
+			expected:    nil,
+			wantErr:     true,
+		},
+		{
+			name:        "Invalid hostname with double dot",
+			input:       "bad..host:8080",
 			defaultPort: 8000,
 			expected:    nil,
 			wantErr:     true,
@@ -370,4 +428,139 @@ func TestValidateConfigAllOptions(t *testing.T) {
 			t.Fatalf("expected 'reserved parameter' in error message, got: %v", errs)
 		}
 	})
+
+	t.Run("Unknown Collector Name", func(t *testing.T) {
+		sys := config.DefaultSystemConfig()
+		badInv := &config.InventoryConfig{
+			EnabledCollectors: map[string]bool{
+				"wireles_typo": true,
+			},
+			Devices: []config.DeviceConfig{
+				{
+					Name: "Dev1",
+					IP:   "10.0.0.1",
+					EnabledCollectors: map[string]bool{
+						"peer_typo": true,
+					},
+				},
+			},
+		}
+		errs := config.ValidateConfig(sys, badInv)
+		if len(errs) < 2 {
+			t.Fatalf("expected 2 unknown collector errors, got: %v", errs)
+		}
+	})
+
+	t.Run("Invalid Prometheus Label Name and Reserved Base Labels", func(t *testing.T) {
+		sys := config.DefaultSystemConfig()
+		badInv := &config.InventoryConfig{
+			Defaults: config.DefaultsConfig{
+				Labels: map[string]string{
+					"name": "reserved",
+				},
+			},
+			Devices: []config.DeviceConfig{
+				{
+					Name: "Dev1",
+					IP:   "10.0.0.1",
+					Labels: map[string]string{
+						"tower-id": "invalid-hyphen",
+						"__meta":   "invalid-prefix",
+					},
+				},
+			},
+		}
+		errs := config.ValidateConfig(sys, badInv)
+		if len(errs) < 3 {
+			t.Fatalf("expected at least 3 label validation errors, got: %v", errs)
+		}
+	})
+
+	t.Run("SocketTimeout Exceeds RequestTimeout", func(t *testing.T) {
+		sys := config.DefaultSystemConfig()
+		sys.Performance.SocketTimeout = 20
+		sys.Performance.RequestTimeout = 10
+		errs := config.ValidateConfig(sys, validInv)
+		if len(errs) == 0 || !strings.Contains(errs[0], "cannot exceed performance.request_timeout") {
+			t.Fatalf("expected socket_timeout > request_timeout error, got: %v", errs)
+		}
+	})
+
+	t.Run("Nil System and Nil Inventory", func(t *testing.T) {
+		if errs := config.ValidateConfig(nil, validInv); len(errs) == 0 || !strings.Contains(errs[0], "system.yaml is empty") {
+			t.Errorf("expected error for nil sys")
+		}
+		sys := config.DefaultSystemConfig()
+		if errs := config.ValidateConfig(sys, nil); len(errs) == 0 || !strings.Contains(errs[0], "config.yaml is empty") {
+			t.Errorf("expected error for nil inv")
+		}
+	})
+
+	t.Run("Server and Performance Edge Cases", func(t *testing.T) {
+		sys := config.DefaultSystemConfig()
+		sys.Server.Port = 70000
+		sys.Server.ScrapeInterval = 0
+		sys.Server.Listen = "invalid:listen:99999"
+		sys.Server.ProbeAllowedTargets = []string{"", "10.0.0.0/999", "invalid@host"}
+		sys.Performance.MaxWorkers = 0
+		sys.Performance.LoginTimeout = 0
+		sys.Performance.SocketTimeout = 0
+		sys.Performance.FailureBackoff = -1
+		sys.Logging.Level = "INVALID"
+		sys.Logging.SyslogFacility = "INVALID"
+		sys.Logging.Dampening.Enabled = true
+		sys.Logging.Dampening.Threshold = 0
+		sys.Logging.Dampening.Interval = 0
+
+		errs := config.ValidateConfig(sys, validInv)
+		if len(errs) < 10 {
+			t.Fatalf("expected >= 10 validation errors, got %d: %v", len(errs), errs)
+		}
+	})
+
+	t.Run("Inventory Edge Cases", func(t *testing.T) {
+		sys := config.DefaultSystemConfig()
+		badInv := &config.InventoryConfig{
+			Defaults: config.DefaultsConfig{
+				Labels: map[string]string{
+					"ip": "reserved",
+				},
+			},
+			Devices: []config.DeviceConfig{
+				{
+					Name: "",
+					IP:   "invalid-ip",
+					Labels: map[string]string{
+						"optional_note": "sample",
+						"name":          "reserved",
+					},
+				},
+				{
+					Name: "DevDuplicateIP1",
+					IP:   "10.20.30.40",
+				},
+				{
+					Name: "DevDuplicateIP2",
+					IP:   "10.20.30.40",
+				},
+			},
+		}
+
+		errs := config.ValidateConfig(sys, badInv)
+		if len(errs) < 5 {
+			t.Fatalf("expected >= 5 inventory validation errors, got %d: %v", len(errs), errs)
+		}
+	})
+}
+
+func TestLoadConfig_MalformedYAML(t *testing.T) {
+	badFile := filepath.Join(t.TempDir(), "malformed.yaml")
+	_ = os.WriteFile(badFile, []byte(":::invalid: yaml:::"), 0600)
+
+	if _, err := config.LoadSystemConfig(badFile); err == nil {
+		t.Errorf("expected LoadSystemConfig to fail on malformed YAML")
+	}
+	if _, err := config.LoadInventoryConfig(badFile); err == nil {
+		t.Errorf("expected LoadInventoryConfig to fail on malformed YAML")
+	}
 }

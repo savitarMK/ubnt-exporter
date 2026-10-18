@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"ubnt-exporter/internal/definitions"
 	"ubnt-exporter/internal/metrics"
 )
 
@@ -105,12 +106,12 @@ func TestBuildInfoGauge(t *testing.T) {
 
 	foundVer := false
 	for _, lp := range metric.Label {
-		if *lp.Name == "version" && *lp.Value == "1.1.1" {
+		if *lp.Name == "version" && *lp.Value == definitions.VERSION {
 			foundVer = true
 		}
 	}
 	if !foundVer {
-		t.Errorf("version label '1.1.1' not found in build info: %v", metric.Label)
+		t.Errorf("version label %q not found in build info: %v", definitions.VERSION, metric.Label)
 	}
 }
 
@@ -135,4 +136,55 @@ func TestNewStoreIsolationAndScrapeErrorPersistence(t *testing.T) {
 	if !foundErr || errVal != 1.0 {
 		t.Errorf("expected scrape_error counter to be preserved across RemoveDeviceMetrics, got %v (found: %v)", errVal, foundErr)
 	}
+
+	// Test RegisterDynamicLabels idempotency and schema change
+	isolated.RegisterDynamicLabels([]string{"tower", "sector"})
+	isolated.RegisterDynamicLabels([]string{"tower", "sector"})
+	isolated.RegisterDynamicLabels([]string{"tower", "region"})
+
+	// Test UpdateMetric and IncrementMetric on Info, Counter, and unknown keys
+	isolated.UpdateMetric("nonexistent_key", map[string]string{"name": "ISO-AP", "ip": "10.9.9.9"}, 1.0)
+	isolated.IncrementMetric("nonexistent_key", map[string]string{"name": "ISO-AP", "ip": "10.9.9.9"}, 1.0)
+	isolated.IncrementMetric("iface_rx_bytes", map[string]string{"name": "ISO-AP", "ip": "10.9.9.9", "interface": "eth0"}, 512.0)
+	isolated.UpdateMetric("peer_signal", map[string]string{"ap_name": "ISO-AP", "ap_ip": "10.9.9.9", "peer_name": "CPE1", "peer_ip": "10.9.9.10"}, -55.0)
+	isolated.UpdateMetric("device_info", map[string]string{"name": "ISO-AP", "ip": "10.9.9.9", "tower": "T1", "region": "R1"}, 1.0)
+
+	if sig, ok := isolated.GetDeviceMetric("ISO-AP", "10.9.9.9", "peer_signal"); !ok || sig != -55.0 {
+		t.Errorf("expected peer_signal -55.0 via ap_name/ap_ip lookup, got %v (ok=%v)", sig, ok)
+	}
+
+	// Test GetDeviceMetric misses
+	if _, ok := isolated.GetDeviceMetric("ISO-AP", "10.9.9.9", "totally_unknown_key"); ok {
+		t.Errorf("expected GetDeviceMetric to return false for unknown key")
+	}
+	if _, ok := isolated.GetDeviceMetric("WrongName", "10.9.9.9", "peer_signal"); ok {
+		t.Errorf("expected GetDeviceMetric to return false for mismatched name")
+	}
+	if _, ok := isolated.GetDeviceMetric("ISO-AP", "10.9.9.88", "peer_signal"); ok {
+		t.Errorf("expected GetDeviceMetric to return false for mismatched IP")
+	}
+
+	// Test UbiquitiCollector Describe & Collect
+	col := metrics.NewUbiquitiCollector(isolated)
+	col.Describe(nil)
+	descCh := make(chan *prometheus.Desc, 10)
+	col.Describe(descCh)
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(col)
+	metrics.GetTelemetry().Register(reg)
+	mfs, err := reg.Gather()
+	if err != nil || len(mfs) == 0 {
+		t.Errorf("expected gathered metrics from UbiquitiCollector, got len=%d err=%v", len(mfs), err)
+	}
+
+	// Test empty buffer Commit and Len
+	emptyBuf := metrics.NewBuffer()
+	if emptyBuf.Len() != 0 {
+		t.Errorf("expected empty buffer Len() == 0")
+	}
+	emptyBuf.Commit(nil, "ISO-AP", "10.9.9.9")
+	emptyBuf.Commit(isolated, "ISO-AP", "10.9.9.9")
+
+	// Test nil registerer
+	metrics.GetTelemetry().Register(nil)
 }

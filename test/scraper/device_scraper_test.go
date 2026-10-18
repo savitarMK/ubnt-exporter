@@ -117,6 +117,29 @@ func TestNewHTTPClient(t *testing.T) {
 	if !transport.TLSClientConfig.InsecureSkipVerify {
 		t.Errorf("expected InsecureSkipVerify true")
 	}
+
+	// Test default socket timeout fallback when <= 0
+	cZero := scraper.NewHTTPClient(0)
+	if cZero == nil {
+		t.Fatalf("expected non-nil client for 0 timeout")
+	}
+
+	// Test redirect behavior (CheckRedirect returns http.ErrUseLastResponse)
+	tsRedirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/redirect" {
+			http.Redirect(w, r, "/target", http.StatusFound)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer tsRedirect.Close()
+
+	respRedirect, err := cZero.Get(tsRedirect.URL + "/redirect")
+	if err != nil || respRedirect.StatusCode != http.StatusFound {
+		t.Errorf("expected 302 without following redirect, got %v (err=%v)", respRedirect.StatusCode, err)
+	} else {
+		_ = respRedirect.Body.Close()
+	}
 }
 
 func TestDeviceScraper_Scrape_MockServer(t *testing.T) {
@@ -289,5 +312,89 @@ func TestDeviceScraper_Scrape_Errors(t *testing.T) {
 	errVal, hasErr := store.GetDeviceMetric("DaemonFail", scDaemonFail.IP, "scrape_error")
 	if !hasErr || errVal != 1.0 {
 		t.Errorf("expected scrape_error=1.0 to be preserved on daemon scrape failure, got %v (found: %v)", errVal, hasErr)
+	}
+
+	// 6. Failure backoff active in daemon mode (dryRun=false) skips network call immediately
+	scDaemonFail.NextAllowedScrape = time.Now().Add(60 * time.Second)
+	if scDaemonFail.Scrape(context.Background(), tsAuthFail.Client(), store, false) {
+		t.Errorf("expected daemon scrape during active backoff window to return false")
+	}
+
+	// 7. Token expiration (HTTP 401 on first statistics request triggers automatic re-login and succeeds) & AirFiber family dispatch using NewHTTPClient
+	attempts := 0
+	tsReAuth := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1.0/user/login" {
+			w.Header().Set("x-auth-token", "fresh-token-999")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+			return
+		}
+		attempts++
+		if r.Header.Get("X-Auth-Token") != "fresh-token-999" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"device": {"identification": {"model": "airFiber 5XHD"}, "cpu": [{"usage": 22.0}]},
+			"interfaces": [{"id": "eth0", "enabled": true, "statistics": {"rxBytes": 100}}],
+			"wireless": {"serviceUptime": 100, "radios": [{"linkState": "connected", "frequency": {"tx": 5840, "rx": 5215}}], "peers": []}
+		}`))
+	}))
+	defer tsReAuth.Close()
+
+	realClient := scraper.NewHTTPClient(2 * time.Second)
+	scReAuth := scraper.NewDeviceScraper(
+		config.DeviceConfig{Name: "AF5XHD-Node", IP: strings.TrimPrefix(tsReAuth.URL, "http://"), Username: "u", Password: "p"},
+		config.DefaultsConfig{},
+		sys,
+		map[string]bool{"system": true, "interfaces": true, "airfiber": true, "peers": true},
+		[]string{"tower"},
+	)
+	scReAuth.Token = "expired-token"
+	if !scReAuth.Scrape(context.Background(), realClient, store, false) {
+		t.Errorf("expected scrape to succeed after automatic 401 re-authentication")
+	}
+	if attempts < 2 {
+		t.Errorf("expected at least 2 statistics attempts (expired + retry), got %d", attempts)
+	}
+
+	// 8. Missing credentials returns false immediately
+	scEmptyCreds := scraper.NewDeviceScraper(
+		config.DeviceConfig{Name: "NoCreds", IP: "127.0.0.1", Username: "", Password: ""},
+		config.DefaultsConfig{},
+		sys,
+		nil,
+		nil,
+	)
+	if scEmptyCreds.Scrape(context.Background(), realClient, store, false) {
+		t.Errorf("expected scrape to fail when credentials are missing")
+	}
+
+	// 9. HTTP 500 on statistics endpoint
+	ts500 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1.0/user/login" {
+			w.Header().Set("x-auth-token", "tok500")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts500.Close()
+	sc500 := scraper.NewDeviceScraper(
+		config.DeviceConfig{Name: "HTTP500", IP: strings.TrimPrefix(ts500.URL, "http://"), Username: "u", Password: "p"},
+		config.DefaultsConfig{},
+		sys,
+		nil,
+		nil,
+	)
+	if sc500.Scrape(context.Background(), realClient, store, false) {
+		t.Errorf("expected scrape to fail on HTTP 500")
+	}
+
+	// 10. BuildScrapers with nil inventory returns nil
+	if scrapers := scraper.BuildScrapers(nil, sys, nil); scrapers != nil {
+		t.Errorf("expected BuildScrapers(nil) to return nil")
 	}
 }

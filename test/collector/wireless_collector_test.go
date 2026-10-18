@@ -131,3 +131,60 @@ func TestProcessWireless_NoPeers_RadioNoiseFallback(t *testing.T) {
 		t.Errorf("expected ap_clients 0.0, got %v", sink.metrics["ap_clients"])
 	}
 }
+
+func TestProcessWireless_AirMaxAC_SNRFallbackAndDFS(t *testing.T) {
+	sink := newMockMetricSink()
+	apLabels := map[string]string{"name": "ap-ac-sector", "ip": "10.0.4.155"}
+
+	data := map[string]any{
+		"wireless": map[string]any{
+			"serviceUptime": 249224.0,
+			"serviceTime":   249498.0,
+			"radios": []any{
+				map[string]any{
+					"id":           "main",
+					"linkState":    "connected",
+					"frequency":    map[string]any{"control": 5520.0, "center": 5520.0},
+					"channelWidth": map[string]any{"tx": 20.0},
+					"outputPower":  map[string]any{"conducted": 18.0, "eirp": 34.0},
+					"dfs": map[string]any{
+						"enabled":      false,
+						"cacDuration":  60.0,
+						"cacRemaining": 0.0,
+						"lockouts":     []any{},
+					},
+				},
+			},
+			"peers": []any{
+				map[string]any{
+					"local": []any{
+						map[string]any{
+							"linkQuality": map[string]any{
+								"signal":     -47.0,
+								"noiseFloor": -90.0,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	collector.ProcessWireless(context.Background(), data, apLabels, nil, sink)
+
+	if sink.metrics["ap_service_uptime"] != 249224.0 {
+		t.Errorf("expected ap_service_uptime 249224.0, got %v", sink.metrics["ap_service_uptime"])
+	}
+	if sink.metrics["ap_service_time"] != 249498.0 {
+		t.Errorf("expected ap_service_time 249498.0, got %v", sink.metrics["ap_service_time"])
+	}
+	if sink.metrics["ap_snr"] != 43.0 {
+		t.Errorf("expected calculated ap_snr 43.0 (-47 - -90), got %v", sink.metrics["ap_snr"])
+	}
+	if sink.metrics["ap_dfs_enabled"] != 0.0 {
+		t.Errorf("expected ap_dfs_enabled 0.0, got %v", sink.metrics["ap_dfs_enabled"])
+	}
+	if sink.metrics["ap_dfs_cac_duration"] != 60.0 {
+		t.Errorf("expected ap_dfs_cac_duration 60.0, got %v", sink.metrics["ap_dfs_cac_duration"])
+	}
+}

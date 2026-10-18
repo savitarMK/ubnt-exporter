@@ -35,8 +35,10 @@ func NewUbiquitiCollector(store *Store) *UbiquitiCollector {
 }
 
 // Describe sends nothing to mark this as an unchecked dynamic collector.
-func (c *UbiquitiCollector) Describe(_ chan<- *prometheus.Desc) {
-	// Intentionally left blank for dynamic descriptors
+func (c *UbiquitiCollector) Describe(ch chan<- *prometheus.Desc) {
+	if c == nil || ch == nil {
+		return
+	}
 }
 
 // Collect takes a snapshot of the metric store and yields Prometheus metrics.

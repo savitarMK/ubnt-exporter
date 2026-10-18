@@ -345,17 +345,28 @@ Prometheus can scrape Unix Domain Sockets directly using the `http_sd_configs` o
 | `dampening.threshold` | integer | `3` | Number of consecutive identical log events before suppression begins. |
 | `dampening.interval` | integer | `300` | Duration in seconds before emitting a suppression summary and resetting counters. |
 
+> [!NOTE]
+> **Consolidated Templates Directory:**
+> All configuration and alerting templates are maintained in the dedicated [`examples/`](../examples/) directory:
+> - [`examples/config.yaml.example`](../examples/config.yaml.example): Radio inventory, credentials, labels, and module toggles.
+> - [`examples/system.yaml.example`](../examples/system.yaml.example): Server endpoints, timeouts, worker pool, and logging formats.
+> - [`examples/alerts.yaml.example`](../examples/alerts.yaml.example): Prometheus 3.15+ alerting rules.
+> - [`examples/alertmanager.yaml.example`](../examples/alertmanager.yaml.example): Alertmanager 0.34+ notification routing and templates.
+
 ---
 
-## Dynamic Configuration Reloading (`SIGHUP`)
+## Dynamic Configuration Reloading (`SIGHUP` & `reload`)
 
 The exporter listens for POSIX `SIGHUP` signals. Sending `SIGHUP` reloads `system.yaml` at runtime and updates the logging severity level dynamically without interrupting active scrapes or resetting Prometheus counters:
 
 ```bash
-# Obtain process PID and send SIGHUP
+# Automated safe reload with pre-validation and log confirmation:
+docker exec ubnt-exporter ubnt-exporter reload
+
+# Manual POSIX signal:
 pkill -HUP ubnt-exporter
 
-# In Docker:
+# In Docker via docker kill:
 docker kill -s HUP ubnt-exporter
 ```
 

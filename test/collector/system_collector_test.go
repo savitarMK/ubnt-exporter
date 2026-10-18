@@ -93,3 +93,75 @@ func TestProcessSystem_MissingFields_DebugLogging(t *testing.T) {
 		t.Errorf("expected cpu missing debug message, got: %s", logOut)
 	}
 }
+
+func TestProcessSystem_AirMaxAC_EnrichedTelemetry(t *testing.T) {
+	sink := newMockMetricSink()
+	apLabels := map[string]string{"name": "ap-ac-sector", "ip": "10.0.4.155"}
+
+	data := map[string]any{
+		"timestamp": 1766718625964.0,
+		"device": map[string]any{
+			"cpu": []any{
+				map[string]any{
+					"identifier": "MIPS 74Kc V4.12",
+					"usage":      24.0,
+				},
+			},
+			"ram": map[string]any{
+				"usage": 60.0,
+				"free":  25677824.0,
+				"total": 63447040.0,
+			},
+			"temperatures": []any{
+				map[string]any{
+					"name":  "Board",
+					"value": 52.5,
+				},
+			},
+			"uptime": 249588.0,
+			"gps": map[string]any{
+				"fix": false,
+				"lat": 18.412005,
+				"lon": -97.300073,
+			},
+			"powerTime": 249587.0,
+		},
+	}
+
+	collector.ProcessSystem(context.Background(), data, apLabels, sink)
+
+	if sink.metrics["device_timestamp"] != 1766718625.964 {
+		t.Errorf("expected device_timestamp 1766718625.964, got %v", sink.metrics["device_timestamp"])
+	}
+	if sink.metrics["cpu_usage"] != 24.0 {
+		t.Errorf("expected cpu_usage 24.0, got %v", sink.metrics["cpu_usage"])
+	}
+	if sink.metrics["cpu_info"] != 1.0 {
+		t.Errorf("expected cpu_info 1.0, got %v", sink.metrics["cpu_info"])
+	}
+	if len(sink.records["cpu_info"]) == 0 || sink.records["cpu_info"][0].labels["cpu_identifier"] != "MIPS 74Kc V4.12" {
+		t.Errorf("expected cpu_identifier 'MIPS 74Kc V4.12', got %v", sink.records["cpu_info"])
+	}
+	if sink.metrics["ram_used_bytes"] != 37769216.0 {
+		t.Errorf("expected ram_used_bytes 37769216.0, got %v", sink.metrics["ram_used_bytes"])
+	}
+	if sink.metrics["ap_gps_fix"] != 0.0 {
+		t.Errorf("expected ap_gps_fix 0.0, got %v", sink.metrics["ap_gps_fix"])
+	}
+	if sink.metrics["ap_lat"] != 18.412005 {
+		t.Errorf("expected ap_lat 18.412005, got %v", sink.metrics["ap_lat"])
+	}
+	if sink.metrics["ap_lon"] != -97.300073 {
+		t.Errorf("expected ap_lon -97.300073, got %v", sink.metrics["ap_lon"])
+	}
+	if sink.metrics["device_temperature"] != 52.5 {
+		t.Errorf("expected device_temperature 52.5, got %v", sink.metrics["device_temperature"])
+	}
+}
+
+func TestProcessSystem_NilLabelsFallback(_ *testing.T) {
+	sink := newMockMetricSink()
+	data := map[string]any{"device": map[string]any{}}
+	collector.ProcessSystem(context.Background(), data, nil, sink)
+	collector.ProcessSystem(context.Background(), data, map[string]string{}, sink)
+}

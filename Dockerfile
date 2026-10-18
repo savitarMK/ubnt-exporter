@@ -1,4 +1,4 @@
-ARG APP_VERSION=1.1.1
+ARG APP_VERSION=1.1.2
 
 FROM golang:1.27.2-bookworm AS builder
 
@@ -10,6 +10,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 COPY VERSION ./
 COPY cmd/ ./cmd/
+COPY cli/ ./cli/
 COPY internal/ ./internal/
 
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -23,7 +24,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 FROM debian:13.7-slim AS runner
 
-ARG APP_VERSION=1.1.1
+ARG APP_VERSION=1.1.2
 
 LABEL org.opencontainers.image.title="ubnt-exporter" \
       org.opencontainers.image.description="Prometheus exporter for Ubiquiti AirMAX (M/AC), LTU, and AirFiber devices" \
@@ -31,7 +32,8 @@ LABEL org.opencontainers.image.title="ubnt-exporter" \
       org.opencontainers.image.licenses="GPL-2.0-only" \
       org.opencontainers.image.base.name="debian:13.7-slim"
 
-ENV GOMEMLIMIT=128MiB
+ENV GOMEMLIMIT=128MiB \
+    GODEBUG=x509negativeserial=1
 
 WORKDIR /app
 
@@ -40,6 +42,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        procps \
         tzdata && \
     rm -rf /var/lib/apt/lists/* && \
     groupadd -g 1000 appgroup && \

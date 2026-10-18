@@ -7,10 +7,13 @@ The `ubnt-exporter` provides built-in diagnostic commands and structured logging
 ## Table of Contents
 
 - [CLI Command Overview](#cli-command-overview)
+- [Interactive Container Console (`cli`)](#interactive-container-console-cli)
+- [Built-in Verification & Self-Test Suite (`test`)](#built-in-verification--self-test-suite-test)
+- [RE2 Regular Expression & Semantic Query Engine (`query` & `metrics`)](#re2-regular-expression--semantic-query-engine-query--metrics)
 - [Configuration Validation (`check`)](#configuration-validation-check)
   - [Common Validation Warnings and Fixes](#common-validation-warnings-and-fixes)
-- [Active Configuration Inspection (`show`)](#active-configuration-inspection-show)
-- [Dry-Run Scrape Preview (`export`)](#dry-run-scrape-preview-export)
+- [Active Configuration Inspection (`show`) & Hot Reload (`reload`)](#active-configuration-inspection-show--hot-reload-reload)
+- [Dry-Run Scrape Preview (`export`) & Deep Inspection (`inspect`)](#dry-run-scrape-preview-export--deep-inspection-inspect)
 - [Live Terminal Diagnostics (`diag`)](#live-terminal-diagnostics-diag)
   - [Station Health & Signal Auditing](#station-health--signal-auditing)
   - [Detecting RF Chain Imbalance](#detecting-rf-chain-imbalance)
@@ -18,11 +21,19 @@ The `ubnt-exporter` provides built-in diagnostic commands and structured logging
 - [AirFiber Diagnostic Audits](#airfiber-diagnostic-audits)
   - [GPS Synchronization](#gps-synchronization)
   - [DFS Radar CAC and Lockout Timers](#dfs-radar-cac-and-lockout-timers)
-- [Logging & SIEM Observability](#logging--siem-observability)
+- [Logging & SIEM Observability (`logs`)](#logging--siem-observability)
   - [Log Severity Levels](#log-severity-levels)
   - [Structured SIEM Formats (CEF, RFC 5424, Syslog)](#structured-siem-formats-cef-rfc-5424-syslog)
   - [Dynamic Log Level Reloading via SIGHUP](#dynamic-log-level-reloading-via-sighup)
 - [Troubleshooting Common AirOS Quirks](#troubleshooting-common-airos-quirks)
+
+> [!NOTE]
+> **Consolidated Templates Directory:**
+> All configuration files and alert rule templates are organized in the dedicated [`examples/`](../examples/) directory:
+> - [`examples/config.yaml.example`](../examples/config.yaml.example): Radio inventory and credentials.
+> - [`examples/system.yaml.example`](../examples/system.yaml.example): Daemon runtime, timeouts, and logging formats.
+> - [`examples/alerts.yaml.example`](../examples/alerts.yaml.example): Production Prometheus 3.15+ alert rules.
+> - [`examples/alertmanager.yaml.example`](../examples/alertmanager.yaml.example): Alertmanager 0.34+ routing and templates.
 
 ---
 
@@ -30,19 +41,83 @@ The `ubnt-exporter` provides built-in diagnostic commands and structured logging
 
 | Command | Purpose | Network Activity |
 | :--- | :--- | :--- |
-| `ubnt-exporter check` | Verifies YAML syntax, duplicate IPs, and indentation. | None (offline) |
+| `ubnt-exporter run` | Starts the production metrics daemon (`/metrics`, `/probe`, `/logs`). | Continuous daemon |
+| `ubnt-exporter cli` | Opens the interactive `ubnt-cli>` diagnostic shell inside the container. | Interactive REPL |
+| `ubnt-exporter check` | Verifies YAML syntax, collector names, label regex, timeouts, and duplicate IPs. | None (offline) |
 | `ubnt-exporter show` | Dumps merged in-memory configuration with masked secrets. | None (offline) |
+| `ubnt-exporter reload` | Validates configuration and sends `SIGHUP` to the active daemon process. | Local IPC (`SIGHUP`) |
+| `ubnt-exporter test` | Runs built-in verification suites (`all`, `metrics`, `collectors`, `connectivity`, `endpoint`). | Local & target checks |
+| `ubnt-exporter logs` | Tails live daemon logs from the 500-line ring buffer or tests all 5 log formatters (`tail`, `test`, `status`). | Local loopback `/logs` |
+| `ubnt-exporter query` | Queries live telemetry using semantic presets (`signal`, `cpu`, `clients`, `rf`, `traffic`, `gps`, `errors`) or RE2 regular expressions. | Active network queries |
+| `ubnt-exporter metrics` | Searches the 205 Prometheus metric definitions by name, label, or HELP description using RE2. | None (offline) |
+| `ubnt-exporter diag` | Renders ASCII diagnostic tables of wireless stations, SNR, and links. | Active network queries |
+| `ubnt-exporter inspect` | Performs a deep scrape of a target device grouped into 4 collector domains. | Active network queries |
 | `ubnt-exporter export` | Performs a one-shot live scrape and outputs Prometheus metrics. | Active network queries |
-| `ubnt-exporter diag` | Renders ASCII diagnostic tables of wireless stations and links. | Active network queries |
-| `ubnt-exporter run` | Starts the production metrics daemon. | Continuous daemon |
 
-Global options:
+Global flags (accepted in any position, before or after the command):
 
-- `-c, --config <path>`: Path to `config.yaml`.
-- `-s, --system <path>`: Path to `system.yaml`.
-- `--cfg-dir <path>`: Directory containing both configuration files.
+- `-c, --config <path>`: Path to `config.yaml` (default `"config.yaml"`).
+- `-s, --system <path>`: Path to `system.yaml` (default `"system.yaml"`).
+- `--cfg-dir <path>`: Directory containing both `config.yaml` and `system.yaml`.
+- `-t, --target <pattern>`: Filter device by name, IP, custom label (e.g., `tower-b`), or RE2 regular expression (e.g., `^MST.*`).
+- `-r, --regex <pattern>`: Filter metrics or log lines using a semantic preset or RE2 regular expression.
+- `-n, --lines <int>`: Number of log lines to display in `logs tail` (default `50`).
 - `-v, --version`: Displays exporter version and exits.
 - `-log, --log`: Prints logging reference manual.
+- `-h, --help`: Displays global or command-specific contextual help (e.g., `ubnt-exporter query -h`).
+
+---
+
+## Interactive Container Console (`cli`)
+
+Enter the interactive diagnostic console inside a running Docker container:
+
+```bash
+docker exec -it ubnt-exporter ubnt-exporter cli
+```
+
+Inside `ubnt-cli>`, run any diagnostic command directly (`test`, `check`, `logs tail -n 20`, `query señal -t MST4`, `inspect -t MST4`, `reload`, `help`, `exit`). Full `docker exec ...` lines pasted into the prompt are automatically normalized.
+
+---
+
+## Built-in Verification & Self-Test Suite (`test`)
+
+Execute all 4 verification suites inside the container without requiring the Go compiler:
+
+```bash
+docker exec ubnt-exporter ubnt-exporter test
+# Or run a specific suite:
+docker exec ubnt-exporter ubnt-exporter test collectors
+docker exec ubnt-exporter ubnt-exporter test connectivity -t MST4
+```
+
+1. **`metrics`**: Verifies schema integrity (`ubnt_` prefix, valid Prometheus label names, non-empty HELP) across all 205 metric definitions.
+2. **`collectors`**: Executes synthetic unit tests for AirMAX AC and AirFiber 5XHD payloads across `system`, `interfaces`, `wireless`, `peers`, and `airfiber`.
+3. **`connectivity`**: Tests TCP socket reachability, TLS handshake (including negative serial X.509 certificates), API login (`X-Auth-Token`), and a full scrape dry-run.
+4. **`endpoint`**: Queries the local `/metrics` endpoint and counts active `ubnt_*` series.
+
+---
+
+## RE2 Regular Expression & Semantic Query Engine (`query` & `metrics`)
+
+`ubnt-exporter` uses Go's linear-time **RE2** regular expression engine (`regexp`), guaranteeing $O(n)$ execution and immunity against ReDoS attacks. Static semantic presets are pre-compiled at startup via `regexp.MustCompile`, while user-supplied patterns are compiled dynamically via `regexp.Compile` with descriptive error reporting if unsupported syntax (such as lookarounds `(?=...)`) is used.
+
+```bash
+# List all built-in semantic presets (English & Spanish aliases)
+ubnt-exporter query presets
+
+# Query live signal, SNR, noise floor, and chain imbalance on MST4
+ubnt-exporter query señal -t MST4
+
+# Query CPU, RAM, temperature, and uptime across all devices matching ^MST.*
+ubnt-exporter query cpu -t "^MST.*"
+
+# Query using a custom RE2 regular expression
+ubnt-exporter query -r "ubnt_peer_(rx|tx)_bytes|snr" -t MST4
+
+# Explore the 205 metric definitions offline by RE2 pattern
+ubnt-exporter metrics -r "gps|ntp|vlan"
+```
 
 ---
 
@@ -195,7 +270,7 @@ Output excerpt:
 --- PROMETHEUS METRICS PREVIEW ---
 # HELP ubnt_build_info Build and version information for ubnt-exporter
 # TYPE ubnt_build_info gauge
-ubnt_build_info{branch="main",goversion="go1.27.2",revision="manual",version="1.1.1"} 1
+ubnt_build_info{branch="main",goversion="go1.27.2",revision="manual",version="1.1.2"} 1
 # HELP ubnt_ap_cpu_usage_percent CPU Usage %
 # TYPE ubnt_ap_cpu_usage_percent gauge
 ubnt_ap_cpu_usage_percent{ip="10.0.0.1",name="AP-SECTOR-01",network="core",region="us-east",sector="alpha",tower="tower-north"} 14
@@ -300,7 +375,7 @@ logging:
 Log output:
 
 ```text
-CEF:0|Ubiquiti|ubnt-exporter|1.1.1|STATUS|Scrape Finished|3|src=10.0.0.1 msg=Scrape cycle finished in 0.35s
+CEF:0|Ubiquiti|ubnt-exporter|1.1.2|STATUS|Scrape Finished|3|src=10.0.0.1 msg=Scrape cycle finished in 0.35s
 ```
 
 #### IETF Syslog Protocol (RFC 5424)
@@ -431,7 +506,7 @@ This diagnostic visibility allows network engineers to verify whether an absent 
 | :--- | :--- | :--- |
 | Exporter reports `HTTP 401 Unauthorized` | Invalid username/password or credential placed under `labels:`. | Validate credentials in browser; check YAML indentation with `ubnt-exporter check`. |
 | Exporter reports `HTTP 404 Not Found` | Target device runs legacy AirOS v5 or unsupported firmware. | The REST API requires AirOS v8 (AirMAX AC), AirOS v6 (AirMAX M), AirFiber 5XHD firmware, or LTU. |
-| Exporter reports `remote error: tls: handshake failure` | Ubiquiti AirMAX M-series (AirOS v6) radios require legacy TLS RSA cipher suites. | Fixed in v1.1.1. The exporter automatically negotiates RSA cipher suites (`TLS_RSA_WITH_AES_*`) and TLS 1.0+ fallback. |
+| Exporter reports `remote error: tls: handshake failure` | Ubiquiti AirMAX M-series (AirOS v6) radios require legacy TLS RSA cipher suites. | Supported since v1.1.1 / v1.1.2. The exporter automatically negotiates RSA cipher suites (`TLS_RSA_WITH_AES_*`) and TLS 1.0+ fallback. |
 | Exporter fails startup with `duplicate device name` | Multiple targets in `config.yaml` share the same `name` attribute. | Assign unique `name` strings to each device in `config.yaml` to prevent Prometheus time series collisions. |
 | Zero peers returned for Access Point | `peers` collector disabled or device operating in Station (CPE) mode. | Verify `enabled_collectors.peers: true` and confirm target radio is configured as an AP. |
 | Timeouts during scrape cycle | High radio CPU utilization or wireless link packet loss. | Increase `performance.request_timeout` in `system.yaml` or adjust `failure_backoff`. |
