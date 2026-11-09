@@ -1,7 +1,7 @@
 # ubnt-exporter
 
 [![Release](https://img.shields.io/badge/version-v1.1.2-blue.svg)](VERSION)
-[![Go Version](https://img.shields.io/badge/go-1.27.2-00ADD8.svg)](go.mod)
+[![Go Version](https://img.shields.io/badge/go-1.27.3-00ADD8.svg)](go.mod)
 [![Docker Image](https://img.shields.io/badge/docker-debian%3A13.7--slim-2496ED.svg)](Dockerfile)
 [![Prometheus](https://img.shields.io/badge/prometheus-3.15%20ready-E6522C.svg)](https://prometheus.io)
 [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](LICENSE)
@@ -354,7 +354,7 @@ go test -v -coverpkg=./internal/... ./test/...
 To run the complete test suite inside a clean, reproducible container matching the build environment:
 
 ```bash
-docker run --rm -v "$(pwd)":/app -w /app golang:1.27.2-bookworm go test -v -buildvcs=false ./test/...
+docker run --rm -v "$(pwd)":/app -w /app golang:1.27.3-bookworm go test -v -buildvcs=false ./test/...
 ```
 
 ---
