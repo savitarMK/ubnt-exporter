@@ -17,7 +17,7 @@ import (
 const loggingHelpText = `DEBUG
   - Purpose: Full visibility. Traces HTTP requests, headers, and individual steps.
   - Use: Development, debugging connections, or empty metrics.
-  - Example: "DEBUG | MST4 [cycle-1] | GET https://10.1.1.5/api/v1.0/statistics returned HTTP 200"
+  - Example: "DEBUG | AP1 [cycle-1] | GET https://192.168.1.10/api/v1.0/statistics returned HTTP 200"
 
 INFO (Default)
   - Purpose: Operational summary. Startup status, device count, and cycle times.
@@ -44,6 +44,7 @@ type Options struct {
 	CfgDir     string
 	Target     string
 	Regex      string
+	FromFile   string
 	Lines      int
 }
 
@@ -60,32 +61,34 @@ func PrintHelp() {
 	fmt.Println("  test      Runs built-in self-tests (metrics, collectors, connectivity, endpoint).")
 	fmt.Println("  logs      Inspects live daemon logs or tests log formatting (tail, test, status).")
 	fmt.Println("  query     Queries live telemetry using semantic presets (signal, cpu, clients) or RE2 regexp.")
-	fmt.Println("  metrics   Searches the 205 Prometheus metric definitions by RE2 regexp.")
+	fmt.Printf("  metrics   Searches the %d Prometheus metric definitions by RE2 regexp.\n", len(definitions.MetricsDef))
 	fmt.Println("  diag      Interactive terminal diagnostics and RF link quality table.")
 	fmt.Println("  inspect   Deep per-collector telemetry breakdown for a target device.")
 	fmt.Println("  export    One-shot scrape for debugging and Prometheus metrics preview.")
 	fmt.Println("  cli       Opens the interactive administrative shell inside the container.")
 	fmt.Println("\nFLAGS:")
-	fmt.Println("  -c, --config string   Path to config.yaml (default \"config.yaml\")")
-	fmt.Println("  -s, --system string   Path to system.yaml (default \"system.yaml\")")
-	fmt.Println("  --cfg-dir string      Directory containing config.yaml and system.yaml")
-	fmt.Println("  -t, --target string   Filter device by name, IP, label, or RE2 regexp (for diag, inspect, export, query, test, logs)")
-	fmt.Println("  -r, --regex string    RE2 regular expression or preset filter (for query, inspect, export, metrics, logs)")
-	fmt.Println("  -n, --lines int       Number of log lines to display in 'logs tail' (default 50)")
-	fmt.Println("  -v, --version         Show application version")
-	fmt.Println("  -log, --log           Show logging manual and exit")
-	fmt.Println("  -h, --help            Show global or command-specific help")
+	fmt.Println("  -c, --config string     Path to config.yaml (default \"config.yaml\")")
+	fmt.Println("  -s, --system string     Path to system.yaml (default \"system.yaml\")")
+	fmt.Println("  --cfg-dir string        Directory containing config.yaml and system.yaml")
+	fmt.Println("  -t, --target string     Filter device by name, IP, label, or RE2 regexp (for diag, inspect, export, query, test, logs)")
+	fmt.Println("  -r, --regex string      RE2 regular expression or preset filter (for query, inspect, export, metrics, logs)")
+	fmt.Println("  -f, --from-file string  Replay offline JSON statistics fixture instead of live HTTP scrape")
+	fmt.Println("  -n, --lines int         Number of log lines to display in 'logs tail' (default 50)")
+	fmt.Println("  -v, --version           Show application version")
+	fmt.Println("  -log, --log             Show logging manual and exit")
+	fmt.Println("  -h, --help              Show global or command-specific help")
 	fmt.Println("\nEXAMPLES:")
 	fmt.Println("  $ ubnt-exporter run")
 	fmt.Println("  $ ubnt-exporter check")
 	fmt.Println("  $ ubnt-exporter test")
-	fmt.Println("  $ ubnt-exporter query signal -t MST4")
+	fmt.Println("  $ ubnt-exporter query signal -t AP1")
 	fmt.Println("  $ ubnt-exporter query -r \"cpu|ram|temp\"")
+	fmt.Println("  $ ubnt-exporter inspect -f testdata/fixtures/airmax_ac_ptmp.json")
 	fmt.Println("  $ ubnt-exporter metrics -r \"gps|ntp\"")
 	fmt.Println("  $ ubnt-exporter logs tail -n 30 -r \"ERROR|WARN\"")
 	fmt.Println("  $ ubnt-exporter reload")
-	fmt.Println("  $ ubnt-exporter diag -t \"^MST.*\"")
-	fmt.Println("  $ ubnt-exporter inspect -t MST4 -r \"ath0\\.99\"")
+	fmt.Println("  $ ubnt-exporter diag -t \"^AP.*\"")
+	fmt.Println("  $ ubnt-exporter inspect -t AP1 -r \"ath0\\.99\"")
 	fmt.Println("  $ ubnt-exporter cli")
 }
 
@@ -131,9 +134,14 @@ func ParseArgs(args []string) (Options, int, bool) {
 				opts.Target = args[i+1]
 				i++
 			}
-		case "-r", "--regex", "--regexp", "-f", "--filter":
+		case "-r", "--regex", "--regexp", "--filter":
 			if i+1 < len(args) {
 				opts.Regex = args[i+1]
+				i++
+			}
+		case "-f", "--from-file", "--fixture":
+			if i+1 < len(args) {
+				opts.FromFile = args[i+1]
 				i++
 			}
 		case "-n", "--lines":
@@ -164,6 +172,14 @@ func ParseArgs(args []string) (Options, int, bool) {
 				opts.Regex = strings.TrimPrefix(arg, "--regex=")
 			} else if strings.HasPrefix(arg, "--regexp=") {
 				opts.Regex = strings.TrimPrefix(arg, "--regexp=")
+			} else if strings.HasPrefix(arg, "--filter=") {
+				opts.Regex = strings.TrimPrefix(arg, "--filter=")
+			} else if strings.HasPrefix(arg, "-f=") {
+				opts.FromFile = strings.TrimPrefix(arg, "-f=")
+			} else if strings.HasPrefix(arg, "--from-file=") {
+				opts.FromFile = strings.TrimPrefix(arg, "--from-file=")
+			} else if strings.HasPrefix(arg, "--fixture=") {
+				opts.FromFile = strings.TrimPrefix(arg, "--fixture=")
 			} else if strings.HasPrefix(arg, "-n=") {
 				if n, err := strconv.Atoi(strings.TrimPrefix(arg, "-n=")); err == nil && n > 0 {
 					opts.Lines = n
@@ -268,7 +284,9 @@ func Execute(args []string) int {
 		return CmdShell(opts.ConfigPath, opts.SystemPath)
 	}
 
-	if sysErr != nil || invErr != nil {
+	offlineAllowed := opts.FromFile != "" && (opts.Command == "export" || opts.Command == "diag" || opts.Command == "inspect" || opts.Command == "query" || opts.Command == "q" || opts.Command == "test" || opts.Command == "selftest")
+
+	if (sysErr != nil || invErr != nil) && !offlineAllowed {
 		if sysErr != nil {
 			logger.Error("main", "Failed to load system configuration (%s): %v", opts.SystemPath, sysErr)
 		}
@@ -277,6 +295,12 @@ func Execute(args []string) int {
 		}
 		logger.Error("main", "Could not load configuration files. Run 'ubnt-exporter check'")
 		return 1
+	}
+	if sysConf == nil {
+		sysConf = config.DefaultSystemConfig()
+	}
+	if invConf == nil {
+		invConf = &config.InventoryConfig{}
 	}
 
 	switch opts.Command {
@@ -287,23 +311,23 @@ func Execute(args []string) int {
 		CmdShow(sysConf, invConf)
 		return 0
 	case "export":
-		return CmdExport(sysConf, invConf, opts.Target, opts.Regex)
+		return CmdExport(sysConf, invConf, opts.Target, opts.Regex, opts.FromFile)
 	case "diag":
-		return CmdDiag(sysConf, invConf, opts.Target)
+		return CmdDiag(sysConf, invConf, opts.Target, opts.FromFile)
 	case "inspect":
 		target := opts.Target
 		if target == "" {
 			target = opts.Subcommand
 		}
-		return CmdInspect(sysConf, invConf, target, opts.Regex)
+		return CmdInspect(sysConf, invConf, target, opts.Regex, opts.FromFile)
 	case "query", "q":
 		expr := opts.Regex
 		if expr == "" {
 			expr = opts.Subcommand
 		}
-		return CmdQuery(sysConf, invConf, expr, opts.Target)
+		return CmdQuery(sysConf, invConf, expr, opts.Target, opts.FromFile)
 	case "test", "selftest":
-		return CmdTest(sysConf, invConf, opts.Subcommand, opts.Target)
+		return CmdTest(sysConf, invConf, opts.Subcommand, opts.Target, opts.FromFile)
 	default:
 		return 1
 	}

@@ -47,8 +47,8 @@ func TestProcessSystem(t *testing.T) {
 	if sink.metrics["uptime"] != 12345.0 {
 		t.Errorf("expected uptime 12345.0, got %v", sink.metrics["uptime"])
 	}
-	if sink.metrics["af_power_time"] != 54321.0 {
-		t.Errorf("expected af_power_time 54321.0, got %v", sink.metrics["af_power_time"])
+	if _, exists := sink.metrics["af_power_time"]; exists {
+		t.Errorf("did not expect duplicate af_power_time metric, got %v", sink.metrics["af_power_time"])
 	}
 	if sink.metrics["device_power_time"] != 54321.0 {
 		t.Errorf("expected device_power_time 54321.0, got %v", sink.metrics["device_power_time"])
@@ -96,7 +96,7 @@ func TestProcessSystem_MissingFields_DebugLogging(t *testing.T) {
 
 func TestProcessSystem_AirMaxAC_EnrichedTelemetry(t *testing.T) {
 	sink := newMockMetricSink()
-	apLabels := map[string]string{"name": "ap-ac-sector", "ip": "10.0.4.155"}
+	apLabels := map[string]string{"name": "AP1", "ip": "192.168.1.10"}
 
 	data := map[string]any{
 		"timestamp": 1766718625964.0,
@@ -121,8 +121,8 @@ func TestProcessSystem_AirMaxAC_EnrichedTelemetry(t *testing.T) {
 			"uptime": 249588.0,
 			"gps": map[string]any{
 				"fix": false,
-				"lat": 18.412005,
-				"lon": -97.300073,
+				"lat": 37.774900,
+				"lon": -122.419400,
 			},
 			"powerTime": 249587.0,
 		},
@@ -148,11 +148,11 @@ func TestProcessSystem_AirMaxAC_EnrichedTelemetry(t *testing.T) {
 	if sink.metrics["ap_gps_fix"] != 0.0 {
 		t.Errorf("expected ap_gps_fix 0.0, got %v", sink.metrics["ap_gps_fix"])
 	}
-	if sink.metrics["ap_lat"] != 18.412005 {
-		t.Errorf("expected ap_lat 18.412005, got %v", sink.metrics["ap_lat"])
+	if sink.metrics["ap_lat"] != 37.774900 {
+		t.Errorf("expected ap_lat 37.774900, got %v", sink.metrics["ap_lat"])
 	}
-	if sink.metrics["ap_lon"] != -97.300073 {
-		t.Errorf("expected ap_lon -97.300073, got %v", sink.metrics["ap_lon"])
+	if sink.metrics["ap_lon"] != -122.419400 {
+		t.Errorf("expected ap_lon -122.419400, got %v", sink.metrics["ap_lon"])
 	}
 	if sink.metrics["device_temperature"] != 52.5 {
 		t.Errorf("expected device_temperature 52.5, got %v", sink.metrics["device_temperature"])

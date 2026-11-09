@@ -69,8 +69,14 @@ func ProcessWireless(
 									}
 									if snrRaw, hasSNR := linkQual["snr"]; hasSNR && snrRaw != nil {
 										store.UpdateMetric("ap_snr", labels, utils.SafeFloat(snrRaw))
-									} else if hasSig && sigRaw != nil && hasNoise && noiseRaw != nil {
-										store.UpdateMetric("ap_snr", labels, utils.SafeFloat(sigRaw)-utils.SafeFloat(noiseRaw))
+									} else if hasSig && sigRaw != nil {
+										effNoise := noiseRaw
+										if !hasNoise || effNoise == nil {
+											effNoise = mainRadio["noiseFloor"]
+										}
+										if effNoise != nil {
+											store.UpdateMetric("ap_snr", labels, utils.SafeFloat(sigRaw)-utils.SafeFloat(effNoise))
+										}
 									}
 								}
 							}

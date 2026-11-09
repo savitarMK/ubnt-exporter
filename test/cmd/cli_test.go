@@ -204,7 +204,7 @@ logging:
 }
 
 func TestCLI_ParseArgs(t *testing.T) {
-	opts, exitCode, handled := cli.ParseArgs([]string{"logs", "tail", "-n", "25", "-r", "ERROR|WARN", "-t", "MST4", "--cfg-dir", "/conf", "-c", "/custom/cfg.yaml", "-s", "/custom/sys.yaml"})
+	opts, exitCode, handled := cli.ParseArgs([]string{"logs", "tail", "-n", "25", "-r", "ERROR|WARN", "-t", "AP1", "--cfg-dir", "/conf", "-c", "/custom/cfg.yaml", "-s", "/custom/sys.yaml"})
 	if handled || exitCode != 0 {
 		t.Errorf("expected handled=false and exitCode=0, got handled=%v exitCode=%d", handled, exitCode)
 	}
@@ -217,8 +217,8 @@ func TestCLI_ParseArgs(t *testing.T) {
 	if opts.Regex != "ERROR|WARN" {
 		t.Errorf("expected Regex='ERROR|WARN', got %q", opts.Regex)
 	}
-	if opts.Target != "MST4" {
-		t.Errorf("expected Target='MST4', got %q", opts.Target)
+	if opts.Target != "AP1" {
+		t.Errorf("expected Target='AP1', got %q", opts.Target)
 	}
 	if opts.CfgDir != "/conf" || opts.ConfigPath != "/custom/cfg.yaml" || opts.SystemPath != "/custom/sys.yaml" {
 		t.Errorf("unexpected config paths: %q, %q, %q", opts.CfgDir, opts.ConfigPath, opts.SystemPath)
@@ -265,11 +265,11 @@ func TestCLI_LogsCommands(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "ubnt-exporter.log")
-	_ = os.WriteFile(logFile, []byte("2026-10-17T12:00:00Z | INFO  | main | Started daemon\n2026-10-17T12:01:00Z | DEBUG | scraper | Scraping 10.1.1.5\n"), 0600)
+	_ = os.WriteFile(logFile, []byte("2026-10-17T12:00:00Z | INFO  | main | Started daemon\n2026-10-17T12:01:00Z | DEBUG | scraper | Scraping 192.168.1.10\n"), 0600)
 	sysFile := filepath.Join(tmpDir, "system.yaml")
 	_ = os.WriteFile(sysFile, []byte("server:\n  port: 18999\nlogging:\n  level: DEBUG\n  file:\n    enabled: true\n    path: "+logFile+"\n"), 0600)
 
-	code = cli.Execute([]string{"logs", "tail", "-n", "10", "-r", "DEBUG.*10\\.1\\.1\\.5", "-s", sysFile})
+	code = cli.Execute([]string{"logs", "tail", "-n", "10", "-r", "DEBUG.*192\\.168\\.1\\.10", "-s", sysFile})
 	if code != 0 {
 		t.Errorf("expected exit code 0 for 'logs tail' fallback to file with RE2 regex, got %d", code)
 	}
@@ -358,16 +358,16 @@ func TestCLI_LiveMockDevice_DiagInspectExportQuery(t *testing.T) {
 		case "/api/v1.0/statistics":
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{
-				"host": {"hostname": "MST4", "uptime": 3600, "cpuload": 12.5, "fwversion": "v8.7.11", "devmodel": "LiteAP AC", "netrole": "bridge", "temperature": 48},
+				"host": {"hostname": "AP1", "uptime": 3600, "cpuload": 12.5, "fwversion": "v8.7.11", "devmodel": "LiteAP AC", "netrole": "bridge", "temperature": 48},
 				"interfaces": [{"ifname": "ath0", "enabled": true, "status": {"plugged": true, "speed": 1000, "duplex": true}, "statistics": {"rx_bytes": 1024, "tx_bytes": 2048}}],
-				"wireless": {"essid": "AP-SECTOR", "mode": "ap-ptmp", "frequency": 5500, "chanbw": 40, "noisef": -90, "txpower": 22, "count": 1, "polling": {"dl_capacity": 85000, "ul_capacity": 70000, "use": 15, "tx_use": 10, "rx_use": 5}, "sta": [{"mac": "AA:BB:CC:DD:EE:FF", "lastip": "10.1.1.50", "signal": -52, "noisefloor": -90, "chain_rssi": [-53, -55], "tx": 300, "rx": 300, "uptime": 1800, "remote": {"hostname": "CPE-01", "platform": "LiteBeam 5AC", "version": "WA.v8.7.11", "cpuload": 10, "signal": -54, "noisefloor": -91}}]}
+				"wireless": {"essid": "AP-SECTOR", "mode": "ap-ptmp", "frequency": 5500, "chanbw": 40, "noisef": -90, "txpower": 22, "count": 1, "polling": {"dl_capacity": 85000, "ul_capacity": 70000, "use": 15, "tx_use": 10, "rx_use": 5}, "sta": [{"mac": "AA:BB:CC:DD:EE:FF", "lastip": "192.168.1.50", "signal": -52, "noisefloor": -90, "chain_rssi": [-53, -55], "tx": 300, "rx": 300, "uptime": 1800, "remote": {"hostname": "CPE-01", "platform": "LiteBeam 5AC", "version": "WA.v8.7.11", "cpuload": 10, "signal": -54, "noisefloor": -91}}]}
 			}`))
 		case "/metrics":
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("# HELP ubnt_scrape_success Scrape success\n# TYPE ubnt_scrape_success gauge\nubnt_scrape_success{ip=\"10.1.1.5\",name=\"MST4\"} 1\n"))
+			_, _ = w.Write([]byte("# HELP ubnt_scrape_success Scrape success\n# TYPE ubnt_scrape_success gauge\nubnt_scrape_success{ip=\"192.168.1.10\",name=\"AP1\"} 1\n"))
 		case "/logs":
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("2026-10-17 12:00:00 | INFO | [MST4] Collection OK\n2026-10-17 12:00:05 | ERROR | [MST4] Sample error line\n"))
+			_, _ = w.Write([]byte("2026-10-17 12:00:00 | INFO | [AP1] Collection OK\n2026-10-17 12:00:05 | ERROR | [AP1] Sample error line\n"))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -380,17 +380,17 @@ func TestCLI_LiveMockDevice_DiagInspectExportQuery(t *testing.T) {
 	cfgPath := filepath.Join(tmpDir, "config.yaml")
 
 	_ = os.WriteFile(sysPath, []byte("server:\n  port: 18080\n  listen: \""+hostAddr+"\"\n  scrape_interval: 30\nperformance:\n  max_workers: 10\n  login_timeout: 5\n  request_timeout: 10\n  socket_timeout: 2\n  failure_backoff: 30\nlogging:\n  level: INFO\n  console: true\n  formats:\n    text: true\n"), 0600)
-	_ = os.WriteFile(cfgPath, []byte("devices:\n  - name: \"MST4\"\n    ip: \""+hostAddr+"\"\n    ssl: false\n    username: \"admin\"\n    password: \"secret\"\n    labels:\n      tower: \"tower-b\"\n    enabled_collectors:\n      peers: true\n"), 0600)
+	_ = os.WriteFile(cfgPath, []byte("devices:\n  - name: \"AP1\"\n    ip: \""+hostAddr+"\"\n    ssl: false\n    username: \"admin\"\n    password: \"secret\"\n    labels:\n      tower: \"tower-b\"\n    enabled_collectors:\n      peers: true\n"), 0600)
 
 	for _, cmdArgs := range [][]string{
 		{"check", "-c", "../../examples/config.yaml.example", "-s", "../../examples/system.yaml.example"},
 		{"show", "-c", cfgPath, "-s", sysPath},
-		{"diag", "-t", "^MST.*", "-c", cfgPath, "-s", sysPath},
+		{"diag", "-t", "^AP.*", "-c", cfgPath, "-s", sysPath},
 		{"inspect", "-t", "tower-b", "-r", "signal|snr", "-c", cfgPath, "-s", sysPath},
-		{"export", "-t", "MST4", "-r", "ubnt_ap_.*", "-c", cfgPath, "-s", sysPath},
-		{"query", "señal", "-t", "MST4", "-c", cfgPath, "-s", sysPath},
+		{"export", "-t", "AP1", "-r", "ubnt_ap_.*", "-c", cfgPath, "-s", sysPath},
+		{"query", "señal", "-t", "AP1", "-c", cfgPath, "-s", sysPath},
 		{"query", "-r", "cpu|ram", "-t", "tower-b", "-c", cfgPath, "-s", sysPath},
-		{"test", "all", "-t", "MST4", "-c", cfgPath, "-s", sysPath},
+		{"test", "all", "-t", "AP1", "-c", cfgPath, "-s", sysPath},
 		{"logs", "tail", "-n", "10", "-r", "ERROR", "-c", cfgPath, "-s", sysPath},
 		{"-v"},
 		{"-h"},
@@ -787,7 +787,7 @@ func TestCLI_CmdLogs_AllSubcommandsAndFileFallback(t *testing.T) {
 	logFile := filepath.Join(tmpDir, "app.log")
 	sysFile := filepath.Join(tmpDir, "system.yaml")
 
-	logData := "2026-10-18 | INFO | System started\n2026-10-18 | ERROR | MST4 signal dropped\n2026-10-18 | INFO | Scrape complete\n"
+	logData := "2026-10-18 | INFO | System started\n2026-10-18 | ERROR | AP1 signal dropped\n2026-10-18 | INFO | Scrape complete\n"
 	_ = os.WriteFile(logFile, []byte(logData), 0600)
 
 	sysContent := fmt.Sprintf(`
@@ -819,7 +819,7 @@ logging:
 	if c := cli.CmdLogs(sysFile, sysConf, "tail", 2, "ERROR"); c != 0 {
 		t.Errorf("expected CmdLogs tail with regex on file to succeed, got %d", c)
 	}
-	if c := cli.CmdLogs(sysFile, sysConf, "MST4", 5, ""); c != 0 {
+	if c := cli.CmdLogs(sysFile, sysConf, "AP1", 5, ""); c != 0 {
 		t.Errorf("expected CmdLogs shorthand filter on file to succeed, got %d", c)
 	}
 	if c := cli.CmdLogs(sysFile, sysConf, "custom", 5, "INFO"); c != 0 {
@@ -830,5 +830,46 @@ logging:
 	for _, listen := range []string{":8000", "0.0.0.0:8000", "[::]:8000", "192.168.1.100:8000", "invalid"} {
 		sysConf.Server.Listen = listen
 		_ = cli.CmdLogs(sysFile, sysConf, "tail", 1, "")
+	}
+}
+
+func TestCLI_OfflineFixtureReplay(t *testing.T) {
+	fixturePath := "../../testdata/fixtures/airmax_ac_ptmp.json"
+	afFixturePath := "../../testdata/fixtures/af5xhd_ptp.json"
+
+	// 1. Offline replay without requiring config.yaml or system.yaml
+	for _, args := range [][]string{
+		{"diag", "-f", fixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"diag", "-f", afFixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"inspect", "--from-file", fixturePath, "-r", "signal|snr", "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"inspect", "--from-file", afFixturePath, "-r", "af_|peer_", "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"export", "--fixture=" + fixturePath, "--filter=ubnt_peer_.*", "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"export", "--fixture=" + afFixturePath, "--filter=ubnt_af_.*", "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"query", "signal", "-f=" + fixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"query", "frequency", "-f=" + afFixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"test", "collectors", "--from-file=" + fixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"test", "collectors", "--from-file=" + afFixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+	} {
+		if code := cli.Execute(args); code != 0 {
+			t.Errorf("expected offline fixture command %v to succeed with exit code 0, got %d", args, code)
+		}
+	}
+
+	// 2. Offline replay with inventory device target matching
+	if code := cli.Execute([]string{"inspect", "-f", fixturePath, "-t", "AP-SECTOR-01", "-c", "../../examples/config.yaml.example", "-s", "../../examples/system.yaml.example"}); code != 0 {
+		t.Errorf("expected offline inspect with matching inventory target to succeed, got %d", code)
+	}
+
+	// 3. Error cases: nonexistent fixture file on diag, inspect, export, query, test
+	for _, cmd := range [][]string{
+		{"diag", "-f", "/nonexistent/fixture.json"},
+		{"inspect", "-f", "/nonexistent/fixture.json"},
+		{"export", "-f", "/nonexistent/fixture.json"},
+		{"query", "signal", "-f", "/nonexistent/fixture.json"},
+		{"test", "collectors", "-f", "/nonexistent/fixture.json"},
+	} {
+		if code := cli.Execute(cmd); code == 0 {
+			t.Errorf("expected non-zero exit code for nonexistent fixture on %v", cmd)
+		}
 	}
 }

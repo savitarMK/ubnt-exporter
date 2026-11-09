@@ -182,18 +182,19 @@ func PrintRegexPresets() {
 	}
 	fmt.Println("------------------------------------------------------------------------------------------")
 	fmt.Println("RE2 Syntax Examples:")
-	fmt.Println("  ubnt-exporter query señal -t MST4")
+	fmt.Println("  ubnt-exporter query signal -t AP1")
 	fmt.Println("  ubnt-exporter query cpu")
-	fmt.Println("  ubnt-exporter query clientes") //nolint:misspell // Spanish example
-	fmt.Println("  ubnt-exporter query -r \"signal|snr|ccq\" -t \"^MST.*\"")
-	fmt.Println("  ubnt-exporter inspect -t MST4 -r \"interface=\\\"ath0\\.99\\\"\"")
+	fmt.Println("  ubnt-exporter query clients")
+	fmt.Println("  ubnt-exporter query -r \"signal|snr|ccq\" -t \"^AP.*\"")
+	fmt.Println("  ubnt-exporter inspect -t AP1 -r \"interface=\\\"ath0\\.99\\\"\"")
 	fmt.Println("  ubnt-exporter metrics -r \"gps|ntp\"")
 	fmt.Println("  ubnt-exporter logs tail -n 30 -r \"ERROR|WARN|login\"")
 	fmt.Println()
 }
 
-// CmdQuery scrapes matching devices and filters live metrics using semantic presets or RE2 regular expressions.
-func CmdQuery(sysConf *config.SystemConfig, invConf *config.InventoryConfig, queryExpr string, targetFilter string) int {
+// CmdQuery scrapes matching devices (or replays an offline fixture) and filters metrics using semantic presets or RE2 regular expressions.
+func CmdQuery(sysConf *config.SystemConfig, invConf *config.InventoryConfig, queryExpr string, targetFilter string, fromFile ...string) int {
+	fixturePath := firstNonEmpty(fromFile)
 	trimmed := strings.TrimSpace(queryExpr)
 	if trimmed == "" || strings.EqualFold(trimmed, "presets") || strings.EqualFold(trimmed, "list") {
 		PrintRegexPresets()
@@ -210,8 +211,14 @@ func CmdQuery(sysConf *config.SystemConfig, invConf *config.InventoryConfig, que
 	dynamicKeys := config.DiscoverCustomLabels(invConf)
 	store.RegisterDynamicLabels(dynamicKeys)
 
-	scrapers := scraper.BuildScrapers(invConf, sysConf, dynamicKeys)
-	filtered, tErr := FilterScrapersByTarget(scrapers, targetFilter)
+	var filtered []*scraper.DeviceScraper
+	var tErr error
+	if fixturePath != "" {
+		filtered, tErr = buildOfflineScrapers(invConf, sysConf, dynamicKeys, targetFilter, fixturePath)
+	} else {
+		scrapers := scraper.BuildScrapers(invConf, sysConf, dynamicKeys)
+		filtered, tErr = FilterScrapersByTarget(scrapers, targetFilter)
+	}
 	if tErr != nil {
 		fmt.Printf("ERROR in target filter: %v\n", tErr)
 		return 1
@@ -222,20 +229,31 @@ func CmdQuery(sysConf *config.SystemConfig, invConf *config.InventoryConfig, que
 	}
 
 	fmt.Printf("\n LIVE TELEMETRY QUERY: %s\n", resolvedDesc)
+	if fixturePath != "" {
+		fmt.Printf(" Source Fixture: %s\n", fixturePath)
+	}
 	fmt.Println("==========================================================================================")
 
-	client := scraper.NewHTTPClient(time.Duration(sysConf.Performance.SocketTimeout) * time.Second)
 	ctx := logger.WithTraceID(context.Background(), "query")
-
-	var wg sync.WaitGroup
-	for _, sc := range filtered {
-		wg.Add(1)
-		go func(s *scraper.DeviceScraper) {
-			defer wg.Done()
-			s.Scrape(ctx, client, store, true)
-		}(sc)
+	if fixturePath != "" {
+		for _, sc := range filtered {
+			if fErr := sc.ScrapeFile(ctx, fixturePath, store, true); fErr != nil {
+				fmt.Printf("ERROR loading fixture %q: %v\n", fixturePath, fErr)
+				return 1
+			}
+		}
+	} else {
+		client := scraper.NewHTTPClient(time.Duration(sysConf.Performance.SocketTimeout) * time.Second)
+		var wg sync.WaitGroup
+		for _, sc := range filtered {
+			wg.Add(1)
+			go func(s *scraper.DeviceScraper) {
+				defer wg.Done()
+				s.Scrape(ctx, client, store, true)
+			}(sc)
+		}
+		wg.Wait()
 	}
-	wg.Wait()
 
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(metrics.NewUbiquitiCollector(store))
@@ -335,29 +353,30 @@ func CmdMetricsCatalog(pattern string) int {
 func PrintCommandHelp(cmd string) {
 	switch strings.ToLower(strings.TrimSpace(cmd)) {
 	case "query", "q":
-		fmt.Println("USAGE: ubnt-exporter query [preset|regex] [-r regex] [-t target_regex]")
-		fmt.Println("\nQueries live telemetry from devices using semantic presets or RE2 regular expressions.")
+		fmt.Println("USAGE: ubnt-exporter query [preset|regex] [-r regex] [-t target_regex] [-f fixture.json]")
+		fmt.Println("\nQueries live or offline fixture telemetry from devices using semantic presets or RE2 regular expressions.")
 		PrintRegexPresets()
 	case "inspect":
-		fmt.Println("USAGE: ubnt-exporter inspect [-t target_regex] [-r metric_regex]")
-		fmt.Println("\nPerforms a live scrape of a device and groups all collected series by collector domain.")
+		fmt.Println("USAGE: ubnt-exporter inspect [-t target_regex] [-r metric_regex] [-f fixture.json]")
+		fmt.Println("\nPerforms a live scrape or offline fixture replay of a device and groups all collected series by collector domain.")
 		fmt.Println("Examples:")
-		fmt.Println("  ubnt-exporter inspect -t MST4")
-		fmt.Println("  ubnt-exporter inspect -t MST4 -r \"signal|snr|ccq\"")
-		fmt.Println("  ubnt-exporter inspect -t MST4 -r \"interface=\\\"ath0\\.99\\\"\"")
+		fmt.Println("  ubnt-exporter inspect -t AP1")
+		fmt.Println("  ubnt-exporter inspect -t AP1 -r \"signal|snr|ccq\"")
+		fmt.Println("  ubnt-exporter inspect -f testdata/fixtures/airmax_ac_ptmp.json")
 	case "diag":
-		fmt.Println("USAGE: ubnt-exporter diag [-t target_regex]")
+		fmt.Println("USAGE: ubnt-exporter diag [-t target_regex] [-f fixture.json]")
 		fmt.Println("\nDisplays an interactive RF link quality table (Signal, Noise, SNR, Chain Delta, Clients, Capacity).")
 		fmt.Println("Examples:")
 		fmt.Println("  ubnt-exporter diag")
-		fmt.Println("  ubnt-exporter diag -t \"^MST.*\"")
-		fmt.Println("  ubnt-exporter diag -t \"tower-b\"")
+		fmt.Println("  ubnt-exporter diag -t \"^AP.*\"")
+		fmt.Println("  ubnt-exporter diag -f testdata/fixtures/airmax_ac_ptmp.json")
 	case "export":
-		fmt.Println("USAGE: ubnt-exporter export [-t target_regex] [-r metric_regex]")
-		fmt.Println("\nPerforms a one-shot scrape and prints Prometheus exposition format output.")
+		fmt.Println("USAGE: ubnt-exporter export [-t target_regex] [-r metric_regex] [-f fixture.json]")
+		fmt.Println("\nPerforms a one-shot scrape or offline fixture replay and prints Prometheus exposition format output.")
 		fmt.Println("Examples:")
-		fmt.Println("  ubnt-exporter export -t MST4")
-		fmt.Println("  ubnt-exporter export -t MST4 -r \"ubnt_peer_.*\"")
+		fmt.Println("  ubnt-exporter export -t AP1")
+		fmt.Println("  ubnt-exporter export -t AP1 -r \"ubnt_peer_.*\"")
+		fmt.Println("  ubnt-exporter export -f testdata/fixtures/airmax_ac_ptmp.json")
 	case "logs":
 		fmt.Println("USAGE: ubnt-exporter logs [tail|test|status] [-n lines] [-r regex]")
 		fmt.Println("\nInspects live daemon logs from the in-memory ring buffer or tests log formatters.")
@@ -367,11 +386,11 @@ func PrintCommandHelp(cmd string) {
 		fmt.Println("  ubnt-exporter logs test")
 		fmt.Println("  ubnt-exporter logs status")
 	case "test", "selftest":
-		fmt.Println("USAGE: ubnt-exporter test [all|metrics|collectors|connectivity|endpoint] [-t target_regex]")
+		fmt.Println("USAGE: ubnt-exporter test [all|metrics|collectors|connectivity|endpoint] [-t target_regex] [-f fixture.json]")
 		fmt.Println("\nRuns built-in verification and unit test suites inside the container.")
 	case "metrics":
 		fmt.Println("USAGE: ubnt-exporter metrics [-r regex]")
-		fmt.Println("\nSearches the 205 Prometheus metric definitions by name, label, or HELP description.")
+		fmt.Printf("\nSearches the %d Prometheus metric definitions by name, label, or HELP description.\n", len(definitions.MetricsDef))
 		fmt.Println("Examples:")
 		fmt.Println("  ubnt-exporter metrics -r \"gps|ntp\"")
 		fmt.Println("  ubnt-exporter metrics -r \"signal\"")

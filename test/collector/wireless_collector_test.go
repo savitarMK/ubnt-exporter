@@ -134,7 +134,7 @@ func TestProcessWireless_NoPeers_RadioNoiseFallback(t *testing.T) {
 
 func TestProcessWireless_AirMaxAC_SNRFallbackAndDFS(t *testing.T) {
 	sink := newMockMetricSink()
-	apLabels := map[string]string{"name": "ap-ac-sector", "ip": "10.0.4.155"}
+	apLabels := map[string]string{"name": "AP1", "ip": "192.168.1.10"}
 
 	data := map[string]any{
 		"wireless": map[string]any{

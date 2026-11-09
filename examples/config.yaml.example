@@ -10,7 +10,7 @@ defaults:
 devices:
   # Example 1: Minimal device configuration inheriting global credentials and defaults
   - name: "AP-SECTOR-01"                # Unique hostname or device identifier
-    ip: "10.0.0.1"                      # Unique IP address
+    ip: "192.168.1.10"                  # Unique IP address
     labels:                             # Custom dimensional labels for this device
       tower: "tower-north"
       sector: "alpha"
@@ -19,7 +19,7 @@ devices:
   # NOTE: 'ssl', 'username', and 'password' are top-level device properties (indented 4 spaces).
   # DO NOT place or indent them under 'labels:', or YAML will treat them as metric label tags!
   - name: "AP-BACKHAUL-01"
-    ip: "10.0.0.2"
+    ip: "192.168.1.20"
     ssl: true                           # Device override: Connect via HTTPS (:443)
     username: "custom_admin"            # Device override: Dedicated username for this host
     password: "CustomPassword123"       # Device override: Dedicated password for this host

@@ -43,7 +43,8 @@ func (s *selfTestSink) UpdateMetric(key string, labels map[string]string, value 
 }
 
 // CmdTest executes built-in verification suites inside the container (metrics, collectors, connectivity, endpoint).
-func CmdTest(sysConf *config.SystemConfig, invConf *config.InventoryConfig, suite string, targetFilter string) int {
+func CmdTest(sysConf *config.SystemConfig, invConf *config.InventoryConfig, suite string, targetFilter string, fromFile ...string) int {
+	fixturePath := firstNonEmpty(fromFile)
 	suite = strings.ToLower(strings.TrimSpace(suite))
 	if suite == "" {
 		suite = "all"
@@ -61,7 +62,7 @@ func CmdTest(sysConf *config.SystemConfig, invConf *config.InventoryConfig, suit
 	}
 
 	if suite == "all" || suite == "collectors" {
-		if !runSuiteCollectors() {
+		if !runSuiteCollectors(fixturePath) {
 			totalFailed++
 		}
 	}
@@ -131,7 +132,7 @@ func RunSuiteMetricsWith(defs map[string]definitions.MetricDefinition) bool {
 	return true
 }
 
-func runSuiteCollectors() bool {
+func runSuiteCollectors(fixturePath string) bool {
 	fmt.Println("\n[Suite 2/4] Collector Engine Unit Tests (system, interfaces, wireless, peers, airfiber)")
 	apLabels := map[string]string{"name": "selftest-unit", "ip": "127.0.0.1"}
 
@@ -145,7 +146,7 @@ func runSuiteCollectors() bool {
 			"uptime":       100000.0,
 			"powerTime":    100000.0,
 			"temperatures": []any{map[string]any{"name": "Board", "type": "board", "value": 44.0}},
-			"gps":          map[string]any{"fix": true, "lat": 18.45, "lon": -97.42, "alt": 1730.0, "dop": 0.8, "dim": 3.0, "sats": 11.0},
+			"gps":          map[string]any{"fix": true, "lat": 37.7749, "lon": -122.4194, "alt": 1730.0, "dop": 0.8, "dim": 3.0, "sats": 11.0},
 		},
 		"interfaces": []any{
 			map[string]any{
@@ -170,8 +171,8 @@ func runSuiteCollectors() bool {
 			"peers": []any{
 				map[string]any{
 					"common": map[string]any{
-						"hostname": "peer-ac-01", "mgmtIp": "10.0.0.10", "distance": 1500.0, "uptime": 50000.0,
-						"connected": true, "active": true, "countryCode": "AR",
+						"hostname": "CPE-CLIENT-01", "mgmtIp": "192.168.1.101", "distance": 1500.0, "uptime": 50000.0,
+						"connected": true, "active": true, "countryCode": "US",
 						"identification": map[string]any{"mac": "00:11:22:33:44:55", "model": "LBE-5AC-Gen2", "family": "AirMAX AC"},
 						"counters":       map[string]any{"txBytes": 1000.0, "rxBytes": 2000.0, "txRate": 10000000.0, "rxRate": 20000000.0},
 					},
@@ -187,7 +188,7 @@ func runSuiteCollectors() bool {
 					"remote": []any{
 						map[string]any{
 							"netMode": "router",
-							"gps":     map[string]any{"fix": true, "lat": 18.46, "lon": -97.43},
+							"gps":     map[string]any{"fix": true, "lat": 37.7850, "lon": -122.4290},
 							"linkQuality": map[string]any{
 								"signal": -60.0, "noiseFloor": -90.0, "idealSignal": -56.0,
 							},
@@ -268,12 +269,13 @@ func runSuiteCollectors() bool {
 
 	collector.ProcessSystem(ctx, afData, apLabels, afSink)
 	collector.ProcessInterfaces(ctx, afData, apLabels, afSink)
+	collector.ProcessWireless(ctx, afData, apLabels, nil, afSink)
 	collector.ProcessAF5XHD(ctx, afData, apLabels, nil, afSink)
 	collector.ProcessPeers(ctx, afData, apLabels, afSink)
 
-	if afSink.values["af_remote_eirp"] != 54.0 || math.Abs(afSink.values["ap_snr"]-49.0) > 1e-4 || math.Abs(afSink.values["peer_snr"]-49.0) > 1e-4 {
-		fmt.Printf("  [FAIL] AirFiber 5XHD collector test failed (af_remote_eirp=%v, ap_snr=%v, peer_snr=%v)\n",
-			afSink.values["af_remote_eirp"], afSink.values["ap_snr"], afSink.values["peer_snr"])
+	if afSink.values["peer_remote_eirp"] != 54.0 || afSink.values["af_frequency_tx"] != 5840.0 || math.Abs(afSink.values["ap_snr"]-49.0) > 1e-4 || math.Abs(afSink.values["peer_snr"]-49.0) > 1e-4 {
+		fmt.Printf("  [FAIL] AirFiber 5XHD collector test failed (peer_remote_eirp=%v, af_frequency_tx=%v, ap_snr=%v, peer_snr=%v)\n",
+			afSink.values["peer_remote_eirp"], afSink.values["af_frequency_tx"], afSink.values["ap_snr"], afSink.values["peer_snr"])
 		return false
 	}
 	if afSink.labels["iface_info"]["parent_interface"] != "ath0" || afSink.values["peer_gps_alt"] != 2108.0 {
@@ -281,6 +283,16 @@ func runSuiteCollectors() bool {
 		return false
 	}
 	fmt.Println("  [PASS] AirFiber 5XHD pipeline (remote outputPower, SNR fallback, GPS/NTP, ath0/0) verified OK")
+
+	if fixturePath != "" {
+		fixtureStore := metrics.NewStore()
+		sc := scraper.NewOfflineScraper("selftest-fixture", "127.0.0.1", nil, nil)
+		if err := sc.ScrapeFile(ctx, fixturePath, fixtureStore, false); err != nil {
+			fmt.Printf("  [FAIL] Custom fixture verification (%s) failed: %v\n", fixturePath, err)
+			return false
+		}
+		fmt.Printf("  [PASS] Custom fixture (%s) parsed and processed through collector pipeline OK\n", fixturePath)
+	}
 	return true
 }
 

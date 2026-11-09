@@ -20,7 +20,7 @@ groups:
           runbook_url: "docs/diagnostics.md#troubleshooting-common-airos-quirks"
 
       - alert: UbntAirFiberLinkDown
-        expr: ubnt_af_link_state == 0
+        expr: ubnt_ap_link_state == 0
         for: 1m
         labels:
           severity: critical
@@ -85,7 +85,7 @@ groups:
           runbook_url: "docs/diagnostics.md#airfiber-diagnostic-audits"
 
       - alert: UbntAirFiberDFSBlocked
-        expr: ubnt_af_dfs_blocked_status == 1
+        expr: ubnt_ap_dfs_status == 1
         for: 1m
         labels:
           severity: warning
@@ -138,7 +138,7 @@ groups:
           runbook_url: "docs/diagnostics.md#detecting-degraded-ethernet-ports"
 
       - alert: UbntAirFiberHighTemperature
-        expr: ubnt_af_temperature_celsius > 75
+        expr: ubnt_device_temperature_celsius > 75
         for: 15m
         labels:
           severity: warning

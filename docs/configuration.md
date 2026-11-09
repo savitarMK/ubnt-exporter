@@ -98,14 +98,14 @@ defaults:
 devices:
   # Host inheriting global defaults
   - name: "AP-SECTOR-01"
-    ip: "10.0.0.1"
+    ip: "192.168.1.10"
     labels:
       tower: "tower-north"
       sector: "alpha"
 
   # Host with dedicated credentials, HTTPS, and collector overrides
   - name: "AP-BACKHAUL-01"
-    ip: "10.0.0.2"
+    ip: "192.168.1.20"
     ssl: true
     username: "backhaul_admin"
     password: "CustomBackhaulPassword"
@@ -133,7 +133,7 @@ Defines fallback values inherited by all devices that do not specify their own o
 | `password` | string | `""` | Default AirOS administrative password. |
 | `ssl` | boolean | `false` | Default connection scheme (`true` for HTTPS, `false` for HTTP). Built-in client supports modern TLS ECDHE and legacy RSA cipher suites (`TLS_RSA_WITH_AES_*`) for AirOS v6. |
 | `credentials_file` | string | `""` | Path to an external secrets file containing credentials. |
-| `labels` | key/value map | `{}` | Global labels injected into every metric emitted for all devices. |
+| `labels` | key/value map | `{}` | Global dimensional labels automatically inherited by all devices and injected into **every** exported metric (system, wireless, airfiber, interfaces, peers, and scrape status) for direct Grafana panel filtering and grouping. |
 
 ### The `devices` Section
 
@@ -146,7 +146,7 @@ Defines the list of Ubiquiti hardware targets:
 | `username` | string | No | Device-level administrative username override. Inherits from `defaults` if omitted. |
 | `password` | string | No | Device-level administrative password override. Inherits from `defaults` if omitted. |
 | `ssl` | boolean | No | Device-level SSL toggle (`true` for HTTPS, `false` for HTTP). Compatible with modern AirOS v8 and legacy AirOS v6 TLS cipher suites. Inherits from `defaults` if omitted. |
-| `labels` | key/value map | No | Dimensional Prometheus labels specific to this device. Automatically discovered and exposed across all metrics. |
+| `labels` | key/value map | No | Arbitrary dimensional Prometheus labels specific to this device (e.g., `tower`, `sector`, `pop`, `area`, `role`). Automatically discovered and propagated across all 159 metric definitions so Grafana template variables (`$pop`, `$area`, `$tower`, `$sector`) work directly on any metric without PromQL `group_left` joins. |
 | `enabled_collectors` | key/value map | No | Per-device collector module overrides (e.g. disabling `peers` on Point-to-Point backhauls). |
 
 ### The `enabled_collectors` Section
@@ -155,11 +155,11 @@ Enables or disables metric collection modules across the inventory:
 
 | Collector | Default | Description |
 | :--- | :--- | :--- |
-| `wireless` | `true` | General wireless operational status, noise floor, frequency, channel width, and active client counts. |
-| `airfiber` | `true` | AirFiber 5XHD telemetry: GPS satellite locks, internal temperatures, frame lengths, DFS radar timers, and efficiency ratios. |
-| `system` | `true` | Target device host telemetry: CPU load percentage, RAM memory consumption, and system uptime seconds. |
-| `interfaces` | `true` | Network interface statistics: Tx/Rx octets, packets, errors, drops, broadcast, and multicast counters. |
-| `peers` | `true` | Connected station telemetry: Signal per chain, remote signal, chain imbalance, capacity, CINR, MCS rates, distance, and hardware info. |
+| `wireless` | `true` | General wireless operational status (AirMAX & AirFiber/LTU): link state, service uptime, noise floor, SNR, frequency, channel width, output power, DFS radar timers, and active client counts. |
+| `airfiber` | `true` | AirFiber 5XHD / LTU exclusive TDD and split-frequency telemetry: split TX/RX frequencies, RX channel width, downlink duty-cycle ratio, frame length, local/remote GPS TDD sync state, local RX efficiency, and local/remote auto-power state. |
+| `system` | `true` | Target device host telemetry: CPU load percentage, CPU identifier, RAM memory consumption, system/power uptime, internal board temperatures, local GPS coordinates/satellites/DOP, and NTP synchronization. |
+| `interfaces` | `true` | Network interface and VLAN statistics (`eth0`, `ath0`, `ath0/0`, `ath0.99`, `br0`): Tx/Rx octets, packets, errors, drops, broadcast, multicast, SNR, link speed, duplex, and parent interface classification. |
+| `peers` | `true` | Connected station / peer telemetry: Signal per chain, ideal signal, SNR, remote signal, chain imbalance, capacity (DL/UL/combined/ideal), link score, CINR, MCS rates & histograms, remote GPS/NTP, distance, and hardware info. |
 
 ### YAML Indentation and Parameter Placement
 
@@ -174,7 +174,7 @@ Enables or disables metric collection modules across the inventory:
 ```yaml
 devices:
   - name: "AP-SECTOR-01"
-    ip: "10.0.0.1"
+    ip: "192.168.1.10"
     ssl: true
     username: "admin"
     password: "SecretPassword"
@@ -187,7 +187,7 @@ devices:
 ```yaml
 devices:
   - name: "AP-SECTOR-01"
-    ip: "10.0.0.1"
+    ip: "192.168.1.10"
     labels:
       tower: "tower-alpha"
       ssl: true                # ERROR: Parsed as a metric label, not a connection property
@@ -213,8 +213,8 @@ defaults:
     env: "production"
 
 devices:
-  - name: "AP-01"
-    ip: "10.0.0.1"
+  - name: "AP1"
+    ip: "192.168.1.10"
 ```
 
 The secrets file contains authentication credentials:
@@ -357,7 +357,10 @@ Prometheus can scrape Unix Domain Sockets directly using the `http_sd_configs` o
 
 ## Dynamic Configuration Reloading (`SIGHUP` & `reload`)
 
-The exporter listens for POSIX `SIGHUP` signals. Sending `SIGHUP` reloads `system.yaml` at runtime and updates the logging severity level dynamically without interrupting active scrapes or resetting Prometheus counters:
+The exporter listens for POSIX `SIGHUP` signals. Sending `SIGHUP` (or running `ubnt-exporter reload`) reloads both `system.yaml` and `config.yaml` at runtime without interrupting active scrapes or restarting the container:
+- Updates the logging severity level dynamically.
+- Re-discovers custom dimensional labels (`defaults.labels` and `devices[].labels`, such as `pop`, `area`, `tower`, `sector`), updates all 159 metric descriptors in memory, and immediately purges stale label series if a device's name or custom label values changed.
+- Preserves active `X-Auth-Token` sessions for existing devices whose credentials and SSL settings have not changed.
 
 ```bash
 # Automated safe reload with pre-validation and log confirmation:
