@@ -1,0 +1,438 @@
+[
+  {
+    "timestamp": 1383030812717,
+    "device": {
+      "cpu": [
+        {
+          "identifier": "MIPS 74Kc V4.12",
+          "usage": 7
+        }
+      ],
+      "ram": {
+        "usage": 22,
+        "free": 49098752,
+        "total": 63627264
+      },
+      "temperatures": [],
+      "uptime": 3464023
+    },
+    "interfaces": [
+      {
+        "id": "eth0",
+        "name": "",
+        "statistics": {
+          "dropped": 0,
+          "txDropped": 0,
+          "rxDropped": 0,
+          "errors": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 108105,
+          "rxRate": 6776923,
+          "txBytes": 127850969610,
+          "rxBytes": 1940791488016,
+          "txPackets": 510190312,
+          "rxPackets": 1654539897,
+          "txPPS": 69,
+          "rxPPS": 701
+        }
+      },
+      {
+        "id": "ath0",
+        "name": "",
+        "statistics": {
+          "dropped": 0,
+          "txDropped": 3288,
+          "rxDropped": 0,
+          "errors": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 7018434,
+          "rxRate": 104007,
+          "txBytes": 2013928901067,
+          "rxBytes": 141042684946,
+          "txPackets": 1659024288,
+          "rxPackets": 514508757,
+          "txPPS": 700,
+          "rxPPS": 67
+        }
+      },
+      {
+        "id": "br1",
+        "name": "",
+        "statistics": {
+          "dropped": 0,
+          "txDropped": 0,
+          "rxDropped": 0,
+          "errors": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 21411,
+          "rxRate": 15614,
+          "txBytes": 30103624,
+          "rxBytes": 3102880731,
+          "txPackets": 436299,
+          "rxPackets": 26944469,
+          "txPPS": 3,
+          "rxPPS": 14
+        }
+      },
+      {
+        "id": "br0",
+        "name": "",
+        "statistics": {
+          "dropped": 0,
+          "txDropped": 0,
+          "rxDropped": 0,
+          "errors": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 0,
+          "rxRate": 37241,
+          "txBytes": 0,
+          "rxBytes": 5496487704,
+          "txPackets": 0,
+          "rxPackets": 27721316,
+          "txPPS": 0,
+          "rxPPS": 22
+        }
+      },
+      {
+        "id": "eth0.99",
+        "name": "",
+        "statistics": {
+          "dropped": 0,
+          "txDropped": 0,
+          "rxDropped": 0,
+          "errors": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 21528,
+          "rxRate": 16071,
+          "txBytes": 31847380,
+          "rxBytes": 3213223415,
+          "txPackets": 436289,
+          "rxPackets": 26970712,
+          "txPPS": 3,
+          "rxPPS": 14
+        }
+      },
+      {
+        "id": "ath0.99",
+        "name": "",
+        "statistics": {
+          "dropped": 0,
+          "txDropped": 836,
+          "rxDropped": 0,
+          "errors": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 10139,
+          "rxRate": 0,
+          "txBytes": 3611948049,
+          "rxBytes": 0,
+          "txPackets": 27360736,
+          "rxPackets": 0,
+          "txPPS": 11,
+          "rxPPS": 0
+        }
+      }
+    ],
+    "wireless": {
+      "radios": [
+        {
+          "id": "main",
+          "linkState": "connected",
+          "frequency": {
+            "center": 5380
+          },
+          "channelWidth": {
+            "tx": 20
+          }
+        }
+      ],
+      "peers": [
+        {
+          "common": {
+            "mgmtIp": "192.168.1.201",
+            "hostname": "CPE-M5-CLIENT-01",
+            "uptime": 259184,
+            "timestamp": 1794238800000,
+            "distance": 5850,
+            "cpu": [
+              {
+                "usage": 2
+              }
+            ],
+            "ram": {
+              "usage": 32,
+              "free": 43065344,
+              "total": 63627264
+            },
+            "counters": {
+              "rxRate": 53248000,
+              "txRate": 73955328,
+              "rxBytes": 37118646,
+              "txBytes": 153187649,
+              "rxPackets": 107357,
+              "txPackets": 946339,
+              "rxPPS": 1,
+              "txPPS": 0
+            },
+            "identification": {
+              "mac": "00:15:6d:aa:00:01",
+              "product": "AirGrid M5 HP",
+              "firmwareVersion": "6.3.6",
+              "firmware": "XW.ar934x.v6.3.6.33330.210818.1930",
+              "model": "",
+              "family": "airmax-m"
+            }
+          },
+          "local": [
+            {
+              "id": "main",
+              "connectionTime": 259093,
+              "linkQuality": {
+                "signal": -59,
+                "noiseFloor": -99,
+                "signalPerChain": [
+                  -75,
+                  -59
+                ],
+                "snr": 37
+              }
+            }
+          ],
+          "remote": [
+            {
+              "id": "main",
+              "antenna": {},
+              "linkQuality": {
+                "signal": -57,
+                "signalPerChain": [
+                  -57,
+                  0
+                ],
+                "noiseFloor": -97,
+                "snr": 39,
+                "outputPower": {
+                  "conducted": 25
+                }
+              }
+            }
+          ]
+        },
+        {
+          "common": {
+            "mgmtIp": "192.168.1.202",
+            "hostname": "CPE-M5-CLIENT-02",
+            "uptime": 258533,
+            "timestamp": 1794238799000,
+            "distance": 6450,
+            "cpu": [
+              {
+                "usage": 2
+              }
+            ],
+            "ram": {
+              "usage": 32,
+              "free": 42659840,
+              "total": 63627264
+            },
+            "counters": {
+              "rxRate": 39936000,
+              "txRate": 73955328,
+              "rxBytes": 294839434,
+              "txBytes": 2528850937,
+              "rxPackets": 1038531,
+              "txPackets": 2994849,
+              "rxPPS": 0,
+              "txPPS": 0
+            },
+            "identification": {
+              "mac": "00:15:6d:aa:00:02",
+              "product": "LiteBeam M5",
+              "firmwareVersion": "6.3.0",
+              "firmware": "XW.ar934x.v6.3.0.33226.200428.1819",
+              "model": "",
+              "family": "airmax-m"
+            }
+          },
+          "local": [
+            {
+              "id": "main",
+              "connectionTime": 258444,
+              "linkQuality": {
+                "signal": -77,
+                "noiseFloor": -99,
+                "signalPerChain": [
+                  -87,
+                  -77
+                ],
+                "snr": 19
+              }
+            }
+          ],
+          "remote": [
+            {
+              "id": "main",
+              "antenna": {},
+              "linkQuality": {
+                "signal": -66,
+                "signalPerChain": [
+                  -65,
+                  0
+                ],
+                "noiseFloor": -98,
+                "snr": 30,
+                "outputPower": {
+                  "conducted": 21
+                }
+              }
+            }
+          ]
+        },
+        {
+          "common": {
+            "mgmtIp": "192.168.1.203",
+            "hostname": "CPE-M5-CLIENT-03",
+            "uptime": 108019,
+            "timestamp": 1794238799000,
+            "distance": 6000,
+            "cpu": [
+              {
+                "usage": 4
+              }
+            ],
+            "ram": {
+              "usage": 39,
+              "free": 38768640,
+              "total": 63627264
+            },
+            "counters": {
+              "rxRate": 53248000,
+              "txRate": 73955328,
+              "rxBytes": 764749418,
+              "txBytes": 9805969903,
+              "rxPackets": 3091721,
+              "txPackets": 8207261,
+              "rxPPS": 221,
+              "txPPS": 1976
+            },
+            "identification": {
+              "mac": "00:15:6d:aa:00:03",
+              "product": "AirGrid M5 HP",
+              "firmwareVersion": "6.3.6",
+              "firmware": "XW.ar934x.v6.3.6.33330.210818.1930",
+              "model": "",
+              "family": "airmax-m"
+            }
+          },
+          "local": [
+            {
+              "id": "main",
+              "connectionTime": 107929,
+              "linkQuality": {
+                "signal": -62,
+                "noiseFloor": -99,
+                "signalPerChain": [
+                  -79,
+                  -61
+                ],
+                "snr": 34
+              }
+            }
+          ],
+          "remote": [
+            {
+              "id": "main",
+              "antenna": {},
+              "linkQuality": {
+                "signal": -56,
+                "signalPerChain": [
+                  -56,
+                  0
+                ],
+                "noiseFloor": -95,
+                "snr": 40,
+                "outputPower": {
+                  "conducted": 21
+                }
+              }
+            }
+          ]
+        },
+        {
+          "common": {
+            "mgmtIp": "192.168.1.204",
+            "hostname": "CPE-M5-CLIENT-04",
+            "uptime": 11720,
+            "timestamp": 1794238801000,
+            "distance": 6300,
+            "cpu": [
+              {
+                "usage": 2
+              }
+            ],
+            "ram": {
+              "usage": 32,
+              "free": 42754048,
+              "total": 63627264
+            },
+            "counters": {
+              "rxRate": 39936000,
+              "txRate": 73955328,
+              "rxBytes": 30887333,
+              "txBytes": 457003081,
+              "rxPackets": 111794,
+              "txPackets": 526387,
+              "rxPPS": 2,
+              "txPPS": 3
+            },
+            "identification": {
+              "mac": "00:15:6d:aa:00:04",
+              "product": "AirGrid M5 HP",
+              "firmwareVersion": "6.3.6",
+              "firmware": "XW.ar934x.v6.3.6.33330.210818.1930",
+              "model": "",
+              "family": "airmax-m"
+            }
+          },
+          "local": [
+            {
+              "id": "main",
+              "connectionTime": 11628,
+              "linkQuality": {
+                "signal": -73,
+                "noiseFloor": -99,
+                "signalPerChain": [
+                  -89,
+                  -73
+                ],
+                "snr": 23
+              }
+            }
+          ],
+          "remote": [
+            {
+              "id": "main",
+              "antenna": {},
+              "linkQuality": {
+                "signal": -70,
+                "signalPerChain": [
+                  -70,
+                  0
+                ],
+                "noiseFloor": -96,
+                "snr": 26,
+                "outputPower": {
+                  "conducted": 25
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

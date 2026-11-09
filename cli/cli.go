@@ -284,7 +284,8 @@ func Execute(args []string) int {
 		return CmdShell(opts.ConfigPath, opts.SystemPath)
 	}
 
-	offlineAllowed := opts.FromFile != "" && (opts.Command == "export" || opts.Command == "diag" || opts.Command == "inspect" || opts.Command == "query" || opts.Command == "q" || opts.Command == "test" || opts.Command == "selftest")
+	offlineAllowed := (opts.FromFile != "" && (opts.Command == "export" || opts.Command == "diag" || opts.Command == "inspect" || opts.Command == "query" || opts.Command == "q" || opts.Command == "test" || opts.Command == "selftest")) ||
+		((opts.Command == "test" || opts.Command == "selftest") && (opts.Subcommand == "metrics" || opts.Subcommand == "collectors"))
 
 	if (sysErr != nil || invErr != nil) && !offlineAllowed {
 		if sysErr != nil {

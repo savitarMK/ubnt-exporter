@@ -87,11 +87,13 @@ Inside `ubnt-cli>`, run any diagnostic command directly (`test`, `check`, `logs 
 Contributors and network engineers can develop, test, and inspect collectors without requiring live Ubiquiti radios or a `config.yaml` file. The repository includes sanitized real-hardware `/api/v1.0/statistics` captures in [`testdata/fixtures/`](../testdata/fixtures/):
 
 - [`testdata/fixtures/airmax_ac_ptmp.json`](../testdata/fixtures/airmax_ac_ptmp.json): Real AirMAX AC (AirOS v8) PtMP Access Point with connected CPE, VLAN sub-interfaces (`ath0.99`, `eth0.99`), MCS histograms, GPS, and NTP telemetry.
+- [`testdata/fixtures/airmax_m_ptmp.json`](../testdata/fixtures/airmax_m_ptmp.json): Real AirMAX M-series (AirOS v6 `XW.v6.3.6`) PtMP Access Point with 4 connected 1x1 SISO stations (`AirGrid M5 HP` and `LiteBeam M5`), bridge/VLAN interfaces (`br0`, `br1`, `eth0.99`, `ath0.99`), and per-peer CPU/RAM/RF telemetry.
 - [`testdata/fixtures/af5xhd_ptp.json`](../testdata/fixtures/af5xhd_ptp.json): Real AirFiber 5XHD (LTU) PtP Master backhaul with split TX/RX frequencies (`5995`/`6065` MHz), TDD duty cycle, `ath0/0` interface, local/remote GPS, and NTP telemetry.
 
 ```bash
 # 1. Render the RF diagnostic table from an offline JSON fixture (no config.yaml needed)
 ubnt-exporter diag -f testdata/fixtures/airmax_ac_ptmp.json
+ubnt-exporter diag -f testdata/fixtures/airmax_m_ptmp.json
 ubnt-exporter diag -f testdata/fixtures/af5xhd_ptp.json
 
 # 2. Deep per-collector breakdown of an AirFiber 5XHD capture

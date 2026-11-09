@@ -835,19 +835,25 @@ logging:
 
 func TestCLI_OfflineFixtureReplay(t *testing.T) {
 	fixturePath := "../../testdata/fixtures/airmax_ac_ptmp.json"
+	mFixturePath := "../../testdata/fixtures/airmax_m_ptmp.json"
 	afFixturePath := "../../testdata/fixtures/af5xhd_ptp.json"
 
 	// 1. Offline replay without requiring config.yaml or system.yaml
 	for _, args := range [][]string{
 		{"diag", "-f", fixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"diag", "-f", mFixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
 		{"diag", "-f", afFixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
 		{"inspect", "--from-file", fixturePath, "-r", "signal|snr", "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"inspect", "--from-file", mFixturePath, "-r", "peer_static_info|signal", "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
 		{"inspect", "--from-file", afFixturePath, "-r", "af_|peer_", "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
 		{"export", "--fixture=" + fixturePath, "--filter=ubnt_peer_.*", "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"export", "--fixture=" + mFixturePath, "--filter=ubnt_peer_.*", "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
 		{"export", "--fixture=" + afFixturePath, "--filter=ubnt_af_.*", "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
 		{"query", "signal", "-f=" + fixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"query", "peers", "-f=" + mFixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
 		{"query", "frequency", "-f=" + afFixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
 		{"test", "collectors", "--from-file=" + fixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
+		{"test", "collectors", "--from-file=" + mFixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
 		{"test", "collectors", "--from-file=" + afFixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
 	} {
 		if code := cli.Execute(args); code != 0 {

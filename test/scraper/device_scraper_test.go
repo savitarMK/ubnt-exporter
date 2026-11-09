@@ -455,6 +455,28 @@ func TestOfflineScraper_FixtureReplay(t *testing.T) {
 		t.Errorf("expected af_dl_ratio=50.0 from AF5XHD fixture, got %v (ok=%v)", dlRatio, ok)
 	}
 
+	// Verify AirMAX M-series (airOS v6) PtMP fixture with 1x1 SISO stations (AirGrid M5 HP / LiteBeam M5)
+	scM := scraper.NewOfflineScraper("M5-PTMP-FIXTURE", "192.168.1.30", map[string]string{"sector": "sur"}, []string{"sector"})
+	mFixturePath := "../../testdata/fixtures/airmax_m_ptmp.json"
+	if err := scM.ScrapeFile(ctx, mFixturePath, store, true); err != nil {
+		t.Fatalf("expected ScrapeFile on airmax_m_ptmp.json to succeed, got: %v", err)
+	}
+	if freqM, ok := store.GetDeviceMetric("M5-PTMP-FIXTURE", "192.168.1.30", "ap_frequency"); !ok || freqM != 5380.0 {
+		t.Errorf("expected ap_frequency=5380.0 from AirMAX M fixture, got %v (ok=%v)", freqM, ok)
+	}
+	if _, hasCtrlFreq := store.GetDeviceMetric("M5-PTMP-FIXTURE", "192.168.1.30", "ap_control_frequency"); hasCtrlFreq {
+		t.Errorf("expected ap_control_frequency not to be emitted when 'control' frequency is absent on AirMAX M-series")
+	}
+	if clientsM, ok := store.GetDeviceMetric("M5-PTMP-FIXTURE", "192.168.1.30", "ap_clients"); !ok || clientsM != 4.0 {
+		t.Errorf("expected ap_clients=4.0 from AirMAX M fixture, got %v (ok=%v)", clientsM, ok)
+	}
+	if _, hasSISOImbalance := store.GetDeviceMetric("M5-PTMP-FIXTURE", "192.168.1.30", "peer_chain_imbalance"); hasSISOImbalance {
+		t.Errorf("expected peer_chain_imbalance not to be emitted for 1x1 SISO AirMAX M stations")
+	}
+	if _, hasSISORemImbalance := store.GetDeviceMetric("M5-PTMP-FIXTURE", "192.168.1.30", "peer_remote_imbalance"); hasSISORemImbalance {
+		t.Errorf("expected peer_remote_imbalance not to be emitted for 1x1 SISO AirMAX M stations")
+	}
+
 	// Verify custom dynamic labels ("sector") are propagated across all metric families (AP, Peer, Interface, Scrape)
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(metrics.NewUbiquitiCollector(store))

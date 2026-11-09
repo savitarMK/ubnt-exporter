@@ -284,6 +284,90 @@ func runSuiteCollectors(fixturePath string) bool {
 	}
 	fmt.Println("  [PASS] AirFiber 5XHD pipeline (remote outputPower, SNR fallback, GPS/NTP, ath0/0) verified OK")
 
+	// 3. AirMAX M-series (airOS v6) 1x1 SISO payload verification
+	mSink := newSelfTestSink()
+	mData := map[string]any{
+		"timestamp": 1383030812717.0,
+		"device": map[string]any{
+			"cpu":          []any{map[string]any{"identifier": "MIPS 74Kc V4.12", "usage": 7.0}},
+			"ram":          map[string]any{"usage": 22.0, "free": 49098752.0, "total": 63627264.0},
+			"temperatures": []any{},
+			"uptime":       3464023.0,
+		},
+		"interfaces": []any{
+			map[string]any{"id": "eth0", "name": "", "statistics": map[string]any{"rxBytes": 1940791488016.0, "txBytes": 127850969610.0}},
+			map[string]any{"id": "ath0.99", "name": "", "statistics": map[string]any{"txBytes": 3611948049.0, "txDropped": 836.0}},
+		},
+		"wireless": map[string]any{
+			"radios": []any{
+				map[string]any{
+					"id":           "main",
+					"linkState":    "connected",
+					"frequency":    map[string]any{"center": 5380.0},
+					"channelWidth": map[string]any{"tx": 20.0},
+				},
+			},
+			"peers": []any{
+				map[string]any{
+					"common": map[string]any{
+						"mgmtIp":   "192.168.1.201",
+						"hostname": "CPE-M5-CLIENT-01",
+						"uptime":   259184.0,
+						"distance": 5850.0,
+						"cpu":      []any{map[string]any{"usage": 2.0}},
+						"ram":      map[string]any{"usage": 32.0, "free": 43065344.0, "total": 63627264.0},
+						"counters": map[string]any{"rxRate": 53248000.0, "txRate": 73955328.0, "rxBytes": 37118646.0, "txBytes": 153187649.0},
+						"identification": map[string]any{
+							"mac": "00:15:6d:aa:00:01", "product": "AirGrid M5 HP", "firmwareVersion": "6.3.6",
+							"firmware": "XW.ar934x.v6.3.6.33330.210818.1930", "model": "", "family": "airmax-m",
+						},
+					},
+					"local": []any{
+						map[string]any{
+							"id":             "main",
+							"connectionTime": 259093.0,
+							"linkQuality":    map[string]any{"signal": -59.0, "noiseFloor": -99.0, "signalPerChain": []any{-75.0, -59.0}, "snr": 37.0},
+						},
+					},
+					"remote": []any{
+						map[string]any{
+							"id":      "main",
+							"antenna": map[string]any{},
+							"linkQuality": map[string]any{
+								"signal": -57.0, "signalPerChain": []any{-57.0, 0.0}, "noiseFloor": -97.0, "snr": 39.0,
+								"outputPower": map[string]any{"conducted": 25.0},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	collector.ProcessSystem(ctx, mData, apLabels, mSink)
+	collector.ProcessInterfaces(ctx, mData, apLabels, mSink)
+	collector.ProcessWireless(ctx, mData, apLabels, nil, mSink)
+	collector.ProcessPeers(ctx, mData, apLabels, mSink)
+
+	if _, hasCtrl := mSink.values["ap_control_frequency"]; hasCtrl {
+		fmt.Println("  [FAIL] AirMAX M-series collector emitted unexpected ap_control_frequency when 'control' is absent")
+		return false
+	}
+	if _, hasSISOImb := mSink.values["peer_chain_imbalance"]; hasSISOImb {
+		fmt.Println("  [FAIL] AirMAX M-series collector emitted unexpected peer_chain_imbalance for 1x1 SISO station")
+		return false
+	}
+	if _, hasRemC1 := mSink.values["peer_remote_signal_c1"]; hasRemC1 {
+		fmt.Println("  [FAIL] AirMAX M-series collector emitted unexpected peer_remote_signal_c1=0 for 1x1 SISO station")
+		return false
+	}
+	if mSink.labels["peer_info"]["peer_model"] != "AirGrid M5 HP" || mSink.labels["peer_info"]["peer_family"] != "airmax-m" || mSink.values["peer_remote_power"] != 25.0 {
+		fmt.Printf("  [FAIL] AirMAX M-series peer metadata/power verification failed: labels=%v power=%v\n",
+			mSink.labels["peer_info"], mSink.values["peer_remote_power"])
+		return false
+	}
+	fmt.Println("  [PASS] AirMAX M-series pipeline (1x1 SISO chain handling, model fallback, VLANs) verified OK")
+
 	if fixturePath != "" {
 		fixtureStore := metrics.NewStore()
 		sc := scraper.NewOfflineScraper("selftest-fixture", "127.0.0.1", nil, nil)

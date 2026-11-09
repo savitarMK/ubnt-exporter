@@ -198,38 +198,83 @@ devices:
 
 ## External Secrets Management
 
-To prevent storing credentials in version-controlled inventory files, `ubnt-exporter` supports centralized external secret files and environment variable injection.
+To prevent storing plain-text credentials in version-controlled GitOps inventory files, `ubnt-exporter` supports an external secrets file (`credentials_file`) as well as environment variable injection. A complete reference template is provided in [`examples/secrets.yaml.example`](../examples/secrets.yaml.example).
 
 ### Centralized Secrets File (`credentials_file`)
 
-You can reference a separate `secrets.yaml` inside `config.yaml`:
+You can reference an external `secrets.yaml` inside `config.yaml`. Relative paths are resolved relative to the directory containing `config.yaml`, while absolute paths (e.g., `/etc/ubnt-exporter/secrets.yaml` or `/run/secrets/ubnt_secrets.yaml`) are used directly:
 
 ```yaml
-# config.yaml
+# config.yaml (safe to commit to Git — zero plain-text passwords)
 defaults:
-  credentials_file: "/etc/ubnt-exporter/secrets.yaml"
+  credentials_file: "secrets.yaml"
   ssl: false
   labels:
-    env: "production"
+    region: "us-east"
+    network: "core"
 
 devices:
-  - name: "AP1"
+  - name: "AP-SECTOR-01"
     ip: "192.168.1.10"
+    labels:
+      tower: "tower-north"
+      sector: "alpha"
+
+  - name: "AP-BACKHAUL-01"
+    ip: "192.168.1.20"
+    ssl: true
+    labels:
+      tower: "tower-south"
+      role: "backhaul"
 ```
 
-The secrets file contains authentication credentials:
+The external `secrets.yaml` file (see [`examples/secrets.yaml.example`](../examples/secrets.yaml.example)) supports both **global default credentials** and **optional per-device overrides** keyed by device `name` or `ip`:
 
 ```yaml
 # secrets.yaml
+# 1. Global default credentials (inherited by all devices unless overridden)
 username: "admin_user"
 password: "ProductionDevicePassword123"
+
+# 2. Optional per-device credential overrides (matched by device 'name' or 'ip')
+devices:
+  AP-BACKHAUL-01:
+    username: "custom_admin"
+    password: "CustomPassword123"
+  # "192.168.1.30":
+  #   username: "legacy_admin"
+  #   password: "LegacyPassword456"
 ```
 
-Set file permissions to ensure security:
+Restrict file permissions on the host and mount the file read-only into the container:
 
 ```bash
 chmod 600 /etc/ubnt-exporter/secrets.yaml
+
+docker run -d \
+  --name ubnt-exporter \
+  -p 8000:8000 \
+  -v /etc/ubnt-exporter/config.yaml:/app/config.yaml:ro \
+  -v /etc/ubnt-exporter/secrets.yaml:/app/secrets.yaml:ro \
+  -v /etc/ubnt-exporter/system.yaml:/app/system.yaml:ro \
+  ubnt-exporter:latest
 ```
+
+> [!TIP]
+> **Zero-Downtime Credential Rotation (`SIGHUP`)**  
+> When you rotate passwords in `secrets.yaml` and run `ubnt-exporter reload` (or `kill -HUP <pid>`), the daemon re-reads `secrets.yaml`, detects which devices had their credentials updated, invalidates only those session tokens, and re-authenticates on the next cycle without dropping metrics or restarting the container.
+
+### Credential Resolution Precedence
+
+For each device in `config.yaml`, `username` and `password` are resolved independently in the following priority order (highest to lowest):
+
+| Priority | Source | Description |
+| :---: | :--- | :--- |
+| **1** | `devices[].username` / `password` (`config.yaml`) | Explicit inline device-level override in `config.yaml`. |
+| **2** | `devices[<name> \| <ip>]` (`secrets.yaml`) | Per-device override in `credentials_file` matched by `name` (first) or `ip` (second). |
+| **3** | `defaults.username` / `password` (`config.yaml`) | Explicit inline global default in `config.yaml`. |
+| **4** | `username` / `password` (`secrets.yaml`) | Top-level global default in `credentials_file`. |
+| **5** | `UBNT_USERNAME` / `UBNT_PASSWORD` (Env) | Process environment variables when omitted from YAML files. |
 
 ### Environment Variables
 
