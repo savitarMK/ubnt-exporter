@@ -108,14 +108,22 @@ func ProcessWireless(
 				if freqData, ok := mainRadio["frequency"].(map[string]any); ok {
 					if centerFreq, has := freqData["center"]; has && centerFreq != nil {
 						store.UpdateMetric("ap_frequency", labels, utils.SafeFloat(centerFreq))
-						store.UpdateMetric("ap_control_frequency", labels, utils.SafeFloat(freqData["control"]))
+					} else if txFreq, hasTx := freqData["tx"]; hasTx && txFreq != nil {
+						store.UpdateMetric("ap_frequency", labels, utils.SafeFloat(txFreq))
+					}
+					if ctrlFreq, hasCtrl := freqData["control"]; hasCtrl && ctrlFreq != nil {
+						store.UpdateMetric("ap_control_frequency", labels, utils.SafeFloat(ctrlFreq))
 					}
 				} else {
 					logger.DebugContext(ctx, devName, "Collector 'wireless': 'frequency' map missing in main radio")
 				}
 
 				if chWidthMap, ok := mainRadio["channelWidth"].(map[string]any); ok {
-					store.UpdateMetric("ap_channel_width", labels, utils.SafeFloat(chWidthMap["tx"]))
+					if txWidth, hasTx := chWidthMap["tx"]; hasTx && txWidth != nil {
+						store.UpdateMetric("ap_channel_width", labels, utils.SafeFloat(txWidth))
+					} else if curWidth, hasCur := chWidthMap["current"]; hasCur && curWidth != nil {
+						store.UpdateMetric("ap_channel_width", labels, utils.SafeFloat(curWidth))
+					}
 				} else {
 					logger.DebugContext(ctx, devName, "Collector 'wireless': 'channelWidth' map missing in main radio")
 				}

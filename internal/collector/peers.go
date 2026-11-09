@@ -192,34 +192,75 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 		}
 		addMetric("peer_remote_noise", remoteLQ, "noiseFloor")
 
-		// Local chain signals & imbalance
-		if chainsLoc, ok := localLQ["signalPerChain"].([]any); ok && len(chainsLoc) >= 2 {
+		// Determine whether the remote station reports a 1x1 SISO chain array (e.g. [-57, 0] on AirGrid M5 / LiteBeam M5)
+		remoteIsSISO := false
+		if chainsRem, ok := remoteLQ["signalPerChain"].([]any); ok && len(chainsRem) >= 1 {
+			rc0 := utils.SafeFloat(chainsRem[0])
+			rc1 := 0.0
+			if len(chainsRem) >= 2 {
+				rc1 = utils.SafeFloat(chainsRem[1])
+			}
+			if (rc0 != 0 && rc1 == 0) || (rc0 == 0 && rc1 != 0) {
+				remoteIsSISO = true
+			}
+		}
+
+		// Local chain signals & imbalance (skip local chain imbalance when the remote peer is a 1x1 SISO station)
+		if chainsLoc, ok := localLQ["signalPerChain"].([]any); ok && len(chainsLoc) >= 1 {
 			c0 := utils.SafeFloat(chainsLoc[0])
-			c1 := utils.SafeFloat(chainsLoc[1])
-			store.UpdateMetric("peer_signal_c0", labels, c0)
-			store.UpdateMetric("peer_signal_c1", labels, c1)
-			store.UpdateMetric("peer_chain_imbalance", labels, math.Abs(c0-c1))
+			if c0 != 0 {
+				store.UpdateMetric("peer_signal_c0", labels, c0)
+			}
+			if len(chainsLoc) >= 2 {
+				c1 := utils.SafeFloat(chainsLoc[1])
+				if c1 != 0 {
+					store.UpdateMetric("peer_signal_c1", labels, c1)
+					if c0 != 0 && !remoteIsSISO {
+						store.UpdateMetric("peer_chain_imbalance", labels, math.Abs(c0-c1))
+					}
+				}
+			}
 		}
 
 		// Local ideal chain signals
 		if idealChainsLoc, ok := localLQ["idealSignalPerChain"].([]any); ok && len(idealChainsLoc) >= 2 {
-			store.UpdateMetric("peer_ideal_signal_c0", labels, utils.SafeFloat(idealChainsLoc[0]))
-			store.UpdateMetric("peer_ideal_signal_c1", labels, utils.SafeFloat(idealChainsLoc[1]))
+			ic0 := utils.SafeFloat(idealChainsLoc[0])
+			ic1 := utils.SafeFloat(idealChainsLoc[1])
+			if ic0 != 0 {
+				store.UpdateMetric("peer_ideal_signal_c0", labels, ic0)
+			}
+			if ic1 != 0 {
+				store.UpdateMetric("peer_ideal_signal_c1", labels, ic1)
+			}
 		}
 
-		// Remote chain signals & imbalance
-		if chainsRem, ok := remoteLQ["signalPerChain"].([]any); ok && len(chainsRem) >= 2 {
+		// Remote chain signals & imbalance (ignore 0 dBm sentinel on 1x1 SISO radios such as AirGrid M5 / LiteBeam M5)
+		if chainsRem, ok := remoteLQ["signalPerChain"].([]any); ok && len(chainsRem) >= 1 {
 			rc0 := utils.SafeFloat(chainsRem[0])
-			rc1 := utils.SafeFloat(chainsRem[1])
-			store.UpdateMetric("peer_remote_signal_c0", labels, rc0)
-			store.UpdateMetric("peer_remote_signal_c1", labels, rc1)
-			store.UpdateMetric("peer_remote_imbalance", labels, math.Abs(rc0-rc1))
+			if rc0 != 0 {
+				store.UpdateMetric("peer_remote_signal_c0", labels, rc0)
+			}
+			if len(chainsRem) >= 2 {
+				rc1 := utils.SafeFloat(chainsRem[1])
+				if rc1 != 0 {
+					store.UpdateMetric("peer_remote_signal_c1", labels, rc1)
+					if rc0 != 0 {
+						store.UpdateMetric("peer_remote_imbalance", labels, math.Abs(rc0-rc1))
+					}
+				}
+			}
 		}
 
 		// Remote ideal chain signals
 		if idealChainsRem, ok := remoteLQ["idealSignalPerChain"].([]any); ok && len(idealChainsRem) >= 2 {
-			store.UpdateMetric("peer_remote_ideal_signal_c0", labels, utils.SafeFloat(idealChainsRem[0]))
-			store.UpdateMetric("peer_remote_ideal_signal_c1", labels, utils.SafeFloat(idealChainsRem[1]))
+			ric0 := utils.SafeFloat(idealChainsRem[0])
+			ric1 := utils.SafeFloat(idealChainsRem[1])
+			if ric0 != 0 {
+				store.UpdateMetric("peer_remote_ideal_signal_c0", labels, ric0)
+			}
+			if ric1 != 0 {
+				store.UpdateMetric("peer_remote_ideal_signal_c1", labels, ric1)
+			}
 		}
 
 		var localRxHist []any
@@ -392,9 +433,14 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 		for k, v := range labels {
 			infoLabels[k] = v
 		}
+		peerProduct := utils.CleanString(ident["product"])
+		peerModel := utils.CleanString(ident["model"])
+		if peerModel == "Unknown" && peerProduct != "Unknown" {
+			peerModel = peerProduct
+		}
 		infoLabels["peer_mac"] = utils.CleanString(ident["mac"])
-		infoLabels["peer_product"] = utils.CleanString(ident["product"])
-		infoLabels["peer_model"] = utils.CleanString(ident["model"])
+		infoLabels["peer_product"] = peerProduct
+		infoLabels["peer_model"] = peerModel
 		infoLabels["peer_family"] = utils.CleanString(ident["family"])
 		infoLabels["peer_firmware"] = utils.CleanString(ident["firmwareVersion"])
 		infoLabels["peer_firmware_build"] = utils.CleanString(ident["firmware"])

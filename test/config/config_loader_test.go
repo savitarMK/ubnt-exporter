@@ -149,13 +149,24 @@ func TestCredentialsFileLoading(t *testing.T) {
 	secretsContent := `
 username: "secret_user"
 password: "secret_password"
+devices:
+  Dev2:
+    username: "dev2_user"
+    password: "dev2_password"
+  "192.168.1.30":
+    username: "ip_user"
+    password: "ip_password"
 `
 	configContent := `
 defaults:
   credentials_file: "secrets.yaml"
 devices:
   - name: "Dev1"
-    ip: "10.0.0.1"
+    ip: "192.168.1.10"
+  - name: "Dev2"
+    ip: "192.168.1.20"
+  - name: "Dev3"
+    ip: "192.168.1.30"
 `
 	if err := os.WriteFile(secretsFile, []byte(secretsContent), 0600); err != nil {
 		t.Fatalf("failed to write secrets: %v", err)
@@ -174,6 +185,43 @@ devices:
 	}
 	if inv.Defaults.Password != "secret_password" {
 		t.Errorf("expected password 'secret_password', got %q", inv.Defaults.Password)
+	}
+	if len(inv.Devices) != 3 {
+		t.Fatalf("expected 3 devices, got %d", len(inv.Devices))
+	}
+	if inv.Devices[1].Username != "dev2_user" || inv.Devices[1].Password != "dev2_password" {
+		t.Errorf("expected Dev2 override from secrets.yaml by name, got user=%q pass=%q", inv.Devices[1].Username, inv.Devices[1].Password)
+	}
+	if inv.Devices[2].Username != "ip_user" || inv.Devices[2].Password != "ip_password" {
+		t.Errorf("expected Dev3 override from secrets.yaml by IP, got user=%q pass=%q", inv.Devices[2].Username, inv.Devices[2].Password)
+	}
+
+	// Verify examples/secrets.yaml.example is valid YAML and loads cleanly when referenced
+	exampleSecretsBytes, err := os.ReadFile("../../examples/secrets.yaml.example")
+	if err != nil {
+		t.Fatalf("expected examples/secrets.yaml.example to exist: %v", err)
+	}
+	if err := os.WriteFile(secretsFile, exampleSecretsBytes, 0600); err != nil {
+		t.Fatalf("failed to copy examples/secrets.yaml.example: %v", err)
+	}
+	exampleCfgContent := `
+defaults:
+  credentials_file: "secrets.yaml"
+devices:
+  - name: "AP-SECTOR-01"
+    ip: "192.168.1.10"
+  - name: "AP-BACKHAUL-01"
+    ip: "192.168.1.20"
+`
+	if err := os.WriteFile(configFile, []byte(exampleCfgContent), 0600); err != nil {
+		t.Fatalf("failed to write example config: %v", err)
+	}
+	invExample, err := config.LoadInventoryConfig(configFile)
+	if err != nil {
+		t.Fatalf("LoadInventoryConfig with examples/secrets.yaml.example failed: %v", err)
+	}
+	if invExample.Defaults.Username != "YOUR_DEFAULT_USERNAME" || invExample.Devices[1].Username != "custom_admin" {
+		t.Errorf("unexpected credentials loaded from examples/secrets.yaml.example: defaults=%q dev1=%q", invExample.Defaults.Username, invExample.Devices[1].Username)
 	}
 
 	// Verify error paths on missing/corrupt files

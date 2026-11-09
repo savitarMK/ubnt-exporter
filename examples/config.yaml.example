@@ -1,7 +1,7 @@
 defaults:
   username: "YOUR_USERNAME"
   password: "YOUR_PASSWORD"
-  # credentials_file: "secrets.yaml"    # Optional: External credentials file for GitOps secret separation
+  # credentials_file: "secrets.yaml"    # Optional: External credentials file for GitOps secret separation (see examples/secrets.yaml.example)
   ssl: false                            # Default SSL protocol (false for HTTP :80, true for HTTPS :443)
   labels:                               # Global default labels inherited by all devices
     region: "us-east"

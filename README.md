@@ -33,7 +33,7 @@ The `ubnt-exporter` gathers operational telemetry and radio metrics from Ubiquit
 - **OpenMetrics 2.0 & Prometheus 3.15 Ready:** Full content negotiation, Unix Domain Socket (`unix:///path.sock`) scraping, and standard `ubnt_build_info` telemetry.
 - **Universal Dynamic Label Propagation (Grafana Ready):** Arbitrary custom labels configured in `defaults.labels` and `devices[].labels` (e.g., `region`, `network`, `tower`, `sector`, `pop`, `area`, `role`) are automatically discovered and injected across **all 159 exported metrics** (System, Radio, AirFiber, Interfaces, Peers, and Scrape Status), enabling direct Grafana template variable filtering and grouping without complex PromQL `group_left` joins.
 - **Unified Non-Duplicated Collector Pipeline:** Executes `system`, `interfaces`, `wireless`, and `peers` across all Ubiquiti families while keeping `airfiber` exclusively for split-frequency TDD backhaul metrics, eliminating redundant `ubnt_af_*` series.
-- **Offline Fixture Replay & Development Engine (`-f` / `--from-file`):** Develop, inspect, and test new collector features against real captured AirMAX AC PtMP ([`testdata/fixtures/airmax_ac_ptmp.json`](testdata/fixtures/airmax_ac_ptmp.json)) and AirFiber 5XHD PtP ([`testdata/fixtures/af5xhd_ptp.json`](testdata/fixtures/af5xhd_ptp.json)) JSON payloads without requiring live hardware connectivity or configuration files.
+- **Offline Fixture Replay & Development Engine (`-f` / `--from-file`):** Develop, inspect, and test new collector features against real captured AirMAX AC PtMP ([`testdata/fixtures/airmax_ac_ptmp.json`](testdata/fixtures/airmax_ac_ptmp.json)), AirMAX M-series PtMP ([`testdata/fixtures/airmax_m_ptmp.json`](testdata/fixtures/airmax_m_ptmp.json)), and AirFiber 5XHD PtP ([`testdata/fixtures/af5xhd_ptp.json`](testdata/fixtures/af5xhd_ptp.json)) JSON payloads without requiring live hardware connectivity or configuration files.
 - **Integrated Exporter Self-Telemetry:** Native OpenMetrics self-observability exposing module latency histograms (`ubnt_exporter_collector_duration_seconds`), execution counters, fleet availability ratios, and Go runtime stats (`go_*`, `process_*`).
 - **Production-Ready Alertmanager 0.34+ Stack:** Turnkey alert rules ([`examples/alerts.yaml.example`](examples/alerts.yaml.example)) and Alertmanager routing templates ([`examples/alertmanager.yaml.example`](examples/alertmanager.yaml.example)) featuring hierarchical inhibition (AP/CPE storm suppression), Slack message editing for RF link flapping, and Telegram HTML delivery.
 - **Dynamic Configuration Reloading:** Listens for `SIGHUP` signals (`ubnt-exporter reload`) to reload logging levels, inventory targets, and dynamic Prometheus labels on the fly while purging stale label series.
@@ -198,7 +198,7 @@ logging:
 ```
 
 > [!IMPORTANT]
-> Always place device connection properties (`username`, `password`, `ssl`, and `enabled_collectors`) directly under each device entry, not under `labels:`. For full details, see the [Configuration Guide](docs/configuration.md#yaml-indentation-and-parameter-placement).
+> Always place device connection properties (`username`, `password`, `ssl`, and `enabled_collectors`) directly under each device entry, not under `labels:`. For GitOps secret separation using `credentials_file: "secrets.yaml"` (with global and per-device credential overrides), see [`examples/secrets.yaml.example`](examples/secrets.yaml.example) and the [Configuration Guide](docs/configuration.md#external-secrets-management).
 
 ---
 
@@ -305,6 +305,7 @@ docker exec ubnt-exporter ubnt-exporter export -t AP1
 
 # 13. Offline development & inspection using real captured device JSON fixtures (no live radio required)
 ubnt-exporter diag -f testdata/fixtures/airmax_ac_ptmp.json
+ubnt-exporter diag -f testdata/fixtures/airmax_m_ptmp.json
 ubnt-exporter inspect -f testdata/fixtures/af5xhd_ptp.json -r "af_|peer_"
 ubnt-exporter export -f testdata/fixtures/airmax_ac_ptmp.json -c examples/config.yaml.example -t AP-SECTOR-01
 ```
@@ -319,7 +320,8 @@ The project maintains a dedicated top-level test suite located in the [`test/`](
 testdata/
 └── fixtures/
     ├── af5xhd_ptp.json              # Sanitized real AirFiber 5XHD (LTU) PtP backhaul capture
-    └── airmax_ac_ptmp.json          # Sanitized real AirMAX AC (AirOS v8) PtMP sector capture
+    ├── airmax_ac_ptmp.json          # Sanitized real AirMAX AC (AirOS v8) PtMP sector capture
+    └── airmax_m_ptmp.json           # Sanitized real AirMAX M-series (AirOS v6) PtMP sector capture
 test/
 ├── cmd/
 │   └── cli_test.go                  # Command-line flags, configuration check/show, offline replay, and CLI subcommands

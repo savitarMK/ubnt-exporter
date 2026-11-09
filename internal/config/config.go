@@ -237,6 +237,10 @@ func LoadInventoryConfig(filename string) (*InventoryConfig, error) {
 		var secrets struct {
 			Username string `yaml:"username"`
 			Password string `yaml:"password"`
+			Devices  map[string]struct {
+				Username string `yaml:"username"`
+				Password string `yaml:"password"`
+			} `yaml:"devices"`
 		}
 		if err := yaml.Unmarshal(cData, &secrets); err != nil {
 			return nil, fmt.Errorf("parsing YAML in credentials_file %s: %w", credsPath, err)
@@ -246,6 +250,23 @@ func LoadInventoryConfig(filename string) (*InventoryConfig, error) {
 		}
 		if inv.Defaults.Password == "" && secrets.Password != "" {
 			inv.Defaults.Password = secrets.Password
+		}
+		if len(secrets.Devices) > 0 {
+			for i := range inv.Devices {
+				dev := &inv.Devices[i]
+				devSecret, ok := secrets.Devices[dev.Name]
+				if !ok {
+					devSecret, ok = secrets.Devices[dev.IP]
+				}
+				if ok {
+					if dev.Username == "" && devSecret.Username != "" {
+						dev.Username = devSecret.Username
+					}
+					if dev.Password == "" && devSecret.Password != "" {
+						dev.Password = devSecret.Password
+					}
+				}
+			}
 		}
 	}
 
