@@ -1,0 +1,423 @@
+[
+  {
+    "timestamp": 1794246769265,
+    "device": {
+      "cpu": [
+        {
+          "identifier": "ARMv7 Processor rev 1 (v7l)",
+          "usage": 32
+        }
+      ],
+      "ram": {
+        "usage": 71,
+        "free": 71917568,
+        "total": 253681664
+      },
+      "temperatures": [],
+      "uptime": 1737374,
+      "gps": {
+        "fix": true,
+        "alt": 1650,
+        "dim": 3,
+        "dop": 0.74,
+        "lat": 19.423845,
+        "lon": -99.412339,
+        "sats": 12,
+        "timeSyncEnabled": false
+      },
+      "ntpClient": {
+        "timeSyncEnabled": true,
+        "lastSync": 1792509433000
+      },
+      "powerTime": 2165238
+    },
+    "interfaces": [
+      {
+        "id": "eth0",
+        "name": "",
+        "statistics": {
+          "txDropped": 0,
+          "rxDropped": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 0,
+          "rxRate": 0,
+          "txBytes": 540,
+          "rxBytes": 0,
+          "txPackets": 6,
+          "rxPackets": 0,
+          "txPPS": 0,
+          "rxPPS": 0,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      },
+      {
+        "id": "ath0",
+        "name": "",
+        "statistics": {
+          "txRate": 660127,
+          "rxRate": 4490451,
+          "txBytes": 312992742413,
+          "rxBytes": 4079050767959,
+          "txPackets": 1178855347,
+          "rxPackets": 3257947567,
+          "txPPS": 1178855347,
+          "rxPPS": 3257947567,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      },
+      {
+        "id": "ath0/0",
+        "name": "",
+        "statistics": {
+          "txRate": 4476734,
+          "rxRate": 677309,
+          "txBytes": 4089877141648,
+          "rxBytes": 315420019930,
+          "txPackets": 3250559178,
+          "rxPackets": 1173013057,
+          "txPPS": 3250559178,
+          "rxPPS": 1173013057,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      },
+      {
+        "id": "br0",
+        "name": "",
+        "statistics": {
+          "txDropped": 0,
+          "rxDropped": 18,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 9278,
+          "rxRate": 22260,
+          "txBytes": 2221904639,
+          "rxBytes": 3927319946,
+          "txPackets": 4572957,
+          "rxPackets": 13000539,
+          "txPPS": 2,
+          "rxPPS": 7,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      },
+      {
+        "id": "br2",
+        "name": "",
+        "statistics": {
+          "txDropped": 0,
+          "rxDropped": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 0,
+          "rxRate": 0,
+          "txBytes": 418,
+          "rxBytes": 0,
+          "txPackets": 5,
+          "rxPackets": 0,
+          "txPPS": 0,
+          "rxPPS": 0,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      },
+      {
+        "id": "br-mvlan",
+        "name": "",
+        "statistics": {
+          "txDropped": 0,
+          "rxDropped": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 0,
+          "rxRate": 4289,
+          "txBytes": 40780678,
+          "rxBytes": 1017031936,
+          "txPackets": 174155,
+          "rxPackets": 7451795,
+          "txPPS": 0,
+          "rxPPS": 3,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      }
+    ],
+    "wireless": {
+      "serviceUptime": 2165145,
+      "serviceTime": 2165194,
+      "radios": [
+        {
+          "id": "main",
+          "linkState": "connected",
+          "dfs": {
+            "lockouts": [],
+            "cacRemaining": 0,
+            "enabled": false,
+            "cacDuration": 0
+          },
+          "frequency": {
+            "tx": 5995,
+            "rx": 6065
+          },
+          "channelWidth": {
+            "tx": 30,
+            "rx": 30
+          },
+          "outputPower": {
+            "eirp": 50,
+            "conducted": 24,
+            "autoPower": false
+          },
+          "dlRatio": 50,
+          "frameLength": 2.5,
+          "gpsSyncState": 0,
+          "rxEfficiency": 12.72,
+          "countryDomain": "none",
+          "noiseFloor": -95
+        }
+      ],
+      "peers": [
+        {
+          "common": {
+            "hostname": "AF5XHD-BACKHAUL-SLAVE",
+            "mgmtIp": "192.168.1.21",
+            "uptime": 1737381,
+            "timestamp": 1794246769000,
+            "distance": 4089,
+            "powerTime": 2652548,
+            "serviceUptime": 2652449,
+            "serviceTime": 2652511,
+            "countryCode": "XH",
+            "countryDomain": "none",
+            "counters": {
+              "rxRate": 4796161,
+              "txRate": 639274,
+              "rxBytes": 4079050767959,
+              "txBytes": 312992742413,
+              "rxPackets": 3257947567,
+              "txPackets": 1178855347,
+              "rxPPS": 370,
+              "txPPS": 566
+            },
+            "identification": {
+              "mac": "00:11:22:1f:b0:25",
+              "product": "airFiber 5XHD",
+              "model": "airFiber 5XHD",
+              "family": "ltu",
+              "firmwareVersion": "1.5.7",
+              "firmware": "af5xhd.amesoc3.v1.5.7.00002.261009.1610",
+              "subsystemID": "ae03"
+            },
+            "cpu": [
+              {
+                "usage": 24
+              }
+            ],
+            "ram": {
+              "usage": 71,
+              "free": 71802880,
+              "total": 253681664
+            }
+          },
+          "local": [
+            {
+              "id": "main",
+              "connectionTime": 1737345,
+              "linkQuality": {
+                "linkScore": {
+                  "dl": 88.5,
+                  "ul": 79.8
+                },
+                "airtime": {
+                  "dl": 0,
+                  "ul": 0
+                },
+                "signalPerChain": [
+                  -47,
+                  -49
+                ],
+                "signal": -48,
+                "idealSignalPerChain": [
+                  -44,
+                  -44
+                ],
+                "idealSignal": -44,
+                "mcs": {
+                  "txIdx": 3,
+                  "rxIdx": 4,
+                  "txIdxIdeal": 4,
+                  "rxIdxIdeal": 4,
+                  "txRate": 8,
+                  "rxRate": 10,
+                  "txLabel": "QAM256",
+                  "rxLabel": "QAM1024",
+                  "rxHistogram": [
+                    {
+                      "rate": 1,
+                      "value": 0
+                    },
+                    {
+                      "rate": 2,
+                      "value": 1384
+                    },
+                    {
+                      "rate": 4,
+                      "value": 0
+                    },
+                    {
+                      "rate": 6,
+                      "value": 24208
+                    },
+                    {
+                      "rate": 8,
+                      "value": 62959746
+                    },
+                    {
+                      "rate": 10,
+                      "value": 351116580
+                    },
+                    {
+                      "rate": 12,
+                      "value": 0
+                    }
+                  ]
+                },
+                "nss": {
+                  "dl": 2,
+                  "ul": 2
+                },
+                "capacity": {
+                  "ul": 145408,
+                  "dl": 147456,
+                  "ulIdeal": 181760,
+                  "dlIdeal": 184320,
+                  "combined": 292864,
+                  "combinedIdeal": 366080
+                },
+                "cinr": {
+                  "dl": 31,
+                  "ul": 30
+                }
+              }
+            }
+          ],
+          "remote": [
+            {
+              "id": "main",
+              "antenna": {
+                "gain": 27,
+                "loss": 1
+              },
+              "gpsSyncState": 0,
+              "linkQuality": {
+                "signalPerChain": [
+                  -46,
+                  -48
+                ],
+                "signal": -47,
+                "idealSignalPerChain": [
+                  -44,
+                  -44
+                ],
+                "idealSignal": -44,
+                "noiseFloor": -90,
+                "mcs": {
+                  "rxHistogram": [
+                    {
+                      "rate": 1,
+                      "value": 0
+                    },
+                    {
+                      "rate": 2,
+                      "value": 0
+                    },
+                    {
+                      "rate": 4,
+                      "value": 0
+                    },
+                    {
+                      "rate": 6,
+                      "value": 650409
+                    },
+                    {
+                      "rate": 8,
+                      "value": 1247671130
+                    },
+                    {
+                      "rate": 10,
+                      "value": 2147483647
+                    },
+                    {
+                      "rate": 12,
+                      "value": 0
+                    }
+                  ]
+                },
+                "outputPower": {
+                  "eirp": 50,
+                  "conducted": 24,
+                  "autoPower": false
+                }
+              },
+              "gps": {
+                "fix": true,
+                "alt": 1744,
+                "dim": 3,
+                "dop": 0.81,
+                "lat": 19.457085,
+                "lon": -99.429295,
+                "sats": 11,
+                "timeSyncEnabled": false
+              },
+              "ntpClient": {
+                "timeSyncEnabled": true,
+                "lastSync": 1792600041000
+              },
+              "rxEfficiency": 13.06,
+              "netMode": "bridge"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

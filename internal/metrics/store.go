@@ -118,43 +118,54 @@ func GetStore() *Store {
 	return globalStore
 }
 
-// RegisterDynamicLabels sets dynamic label keys on the device_info definition.
+// RegisterDynamicLabels appends custom inventory label keys to all metric definitions in the store.
 func (s *Store) RegisterDynamicLabels(dynamicKeys []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	def, ok := s.defs["device_info"]
-	if !ok {
-		return
-	}
-
-	newLabels := []string{"name", "ip"}
-	existing := map[string]bool{"name": true, "ip": true}
-	for _, k := range dynamicKeys {
-		if !existing[k] {
-			newLabels = append(newLabels, k)
-			existing[k] = true
+	anyChanged := false
+	for k, baseDef := range definitions.MetricsDef {
+		curDef, ok := s.defs[k]
+		if !ok {
+			continue
 		}
-	}
 
-	changed := len(newLabels) != len(def.Labels)
-	if !changed {
-		for i := range newLabels {
-			if newLabels[i] != def.Labels[i] {
-				changed = true
-				break
+		newLabels := make([]string, 0, len(baseDef.Labels)+len(dynamicKeys))
+		existing := make(map[string]bool, len(baseDef.Labels)+len(dynamicKeys))
+		for _, baseLbl := range baseDef.Labels {
+			newLabels = append(newLabels, baseLbl)
+			existing[baseLbl] = true
+		}
+		for _, dk := range dynamicKeys {
+			if !existing[dk] {
+				newLabels = append(newLabels, dk)
+				existing[dk] = true
 			}
 		}
+
+		changed := len(newLabels) != len(curDef.Labels)
+		if !changed {
+			for i := range newLabels {
+				if newLabels[i] != curDef.Labels[i] {
+					changed = true
+					break
+				}
+			}
+		}
+
+		if changed {
+			anyChanged = true
+			delete(s.data, k)
+			delete(s.labelsMap, k)
+			curDef.Labels = newLabels
+			s.defs[k] = curDef
+			s.descs[k] = prometheus.NewDesc(curDef.Name, curDef.Help, curDef.Labels, nil)
+		}
 	}
 
-	if changed {
-		delete(s.data, "device_info")
-		delete(s.labelsMap, "device_info")
+	if anyChanged {
+		s.deviceRefs = make(map[string][]metricRef)
 	}
-
-	def.Labels = newLabels
-	s.defs["device_info"] = def
-	s.descs["device_info"] = prometheus.NewDesc(def.Name, def.Help, def.Labels, nil)
 }
 
 func getDeviceKey(labels map[string]string) (string, string) {

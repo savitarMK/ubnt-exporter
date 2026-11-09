@@ -8,6 +8,7 @@ The `ubnt-exporter` provides built-in diagnostic commands and structured logging
 
 - [CLI Command Overview](#cli-command-overview)
 - [Interactive Container Console (`cli`)](#interactive-container-console-cli)
+- [Offline Fixture Replay & Collector Development (`-f` / `--from-file`)](#offline-fixture-replay--collector-development--f----from-file)
 - [Built-in Verification & Self-Test Suite (`test`)](#built-in-verification--self-test-suite-test)
 - [RE2 Regular Expression & Semantic Query Engine (`query` & `metrics`)](#re2-regular-expression--semantic-query-engine-query--metrics)
 - [Configuration Validation (`check`)](#configuration-validation-check)
@@ -46,21 +47,22 @@ The `ubnt-exporter` provides built-in diagnostic commands and structured logging
 | `ubnt-exporter check` | Verifies YAML syntax, collector names, label regex, timeouts, and duplicate IPs. | None (offline) |
 | `ubnt-exporter show` | Dumps merged in-memory configuration with masked secrets. | None (offline) |
 | `ubnt-exporter reload` | Validates configuration and sends `SIGHUP` to the active daemon process. | Local IPC (`SIGHUP`) |
-| `ubnt-exporter test` | Runs built-in verification suites (`all`, `metrics`, `collectors`, `connectivity`, `endpoint`). | Local & target checks |
+| `ubnt-exporter test` | Runs built-in verification suites (`all`, `metrics`, `collectors`, `connectivity`, `endpoint`). | Local, target checks, or `-f` |
 | `ubnt-exporter logs` | Tails live daemon logs from the 500-line ring buffer or tests all 5 log formatters (`tail`, `test`, `status`). | Local loopback `/logs` |
-| `ubnt-exporter query` | Queries live telemetry using semantic presets (`signal`, `cpu`, `clients`, `rf`, `traffic`, `gps`, `errors`) or RE2 regular expressions. | Active network queries |
-| `ubnt-exporter metrics` | Searches the 205 Prometheus metric definitions by name, label, or HELP description using RE2. | None (offline) |
-| `ubnt-exporter diag` | Renders ASCII diagnostic tables of wireless stations, SNR, and links. | Active network queries |
-| `ubnt-exporter inspect` | Performs a deep scrape of a target device grouped into 4 collector domains. | Active network queries |
-| `ubnt-exporter export` | Performs a one-shot live scrape and outputs Prometheus metrics. | Active network queries |
+| `ubnt-exporter query` | Queries telemetry using semantic presets (`signal`, `cpu`, `clients`, `rf`, `traffic`, `gps`, `errors`) or RE2 regular expressions. | Active network or `-f` fixture |
+| `ubnt-exporter metrics` | Searches the 159 Prometheus metric definitions by name, label, or HELP description using RE2. | None (offline) |
+| `ubnt-exporter diag` | Renders ASCII diagnostic tables of wireless stations, SNR, and links. | Active network or `-f` fixture |
+| `ubnt-exporter inspect` | Performs a deep scrape of a target device grouped into 4 collector domains. | Active network or `-f` fixture |
+| `ubnt-exporter export` | Performs a one-shot scrape and outputs Prometheus metrics. | Active network or `-f` fixture |
 
 Global flags (accepted in any position, before or after the command):
 
 - `-c, --config <path>`: Path to `config.yaml` (default `"config.yaml"`).
 - `-s, --system <path>`: Path to `system.yaml` (default `"system.yaml"`).
 - `--cfg-dir <path>`: Directory containing both `config.yaml` and `system.yaml`.
-- `-t, --target <pattern>`: Filter device by name, IP, custom label (e.g., `tower-b`), or RE2 regular expression (e.g., `^MST.*`).
+- `-t, --target <pattern>`: Filter device by name, IP, custom label (e.g., `tower-b`), or RE2 regular expression (e.g., `^AP.*`).
 - `-r, --regex <pattern>`: Filter metrics or log lines using a semantic preset or RE2 regular expression.
+- `-f, --from-file <path>` (or `--fixture <path>`): Replay an offline JSON statistics fixture instead of performing live HTTP requests.
 - `-n, --lines <int>`: Number of log lines to display in `logs tail` (default `50`).
 - `-v, --version`: Displays exporter version and exits.
 - `-log, --log`: Prints logging reference manual.
@@ -76,7 +78,35 @@ Enter the interactive diagnostic console inside a running Docker container:
 docker exec -it ubnt-exporter ubnt-exporter cli
 ```
 
-Inside `ubnt-cli>`, run any diagnostic command directly (`test`, `check`, `logs tail -n 20`, `query señal -t MST4`, `inspect -t MST4`, `reload`, `help`, `exit`). Full `docker exec ...` lines pasted into the prompt are automatically normalized.
+Inside `ubnt-cli>`, run any diagnostic command directly (`test`, `check`, `logs tail -n 20`, `query signal -t AP1`, `inspect -t AP1`, `reload`, `help`, `exit`). Full `docker exec ...` lines pasted into the prompt are automatically normalized.
+
+---
+
+## Offline Fixture Replay & Collector Development (`-f` / `--from-file`)
+
+Contributors and network engineers can develop, test, and inspect collectors without requiring live Ubiquiti radios or a `config.yaml` file. The repository includes sanitized real-hardware `/api/v1.0/statistics` captures in [`testdata/fixtures/`](../testdata/fixtures/):
+
+- [`testdata/fixtures/airmax_ac_ptmp.json`](../testdata/fixtures/airmax_ac_ptmp.json): Real AirMAX AC (AirOS v8) PtMP Access Point with connected CPE, VLAN sub-interfaces (`ath0.99`, `eth0.99`), MCS histograms, GPS, and NTP telemetry.
+- [`testdata/fixtures/af5xhd_ptp.json`](../testdata/fixtures/af5xhd_ptp.json): Real AirFiber 5XHD (LTU) PtP Master backhaul with split TX/RX frequencies (`5995`/`6065` MHz), TDD duty cycle, `ath0/0` interface, local/remote GPS, and NTP telemetry.
+
+```bash
+# 1. Render the RF diagnostic table from an offline JSON fixture (no config.yaml needed)
+ubnt-exporter diag -f testdata/fixtures/airmax_ac_ptmp.json
+ubnt-exporter diag -f testdata/fixtures/af5xhd_ptp.json
+
+# 2. Deep per-collector breakdown of an AirFiber 5XHD capture
+ubnt-exporter inspect -f testdata/fixtures/af5xhd_ptp.json
+
+# 3. Query specific metrics or presets against an offline capture
+ubnt-exporter query signal -f testdata/fixtures/airmax_ac_ptmp.json
+ubnt-exporter query -r "af_|peer_" -f testdata/fixtures/af5xhd_ptp.json
+
+# 4. Preview full Prometheus exposition combined with custom inventory labels from config.yaml
+ubnt-exporter export -f testdata/fixtures/airmax_ac_ptmp.json -c examples/config.yaml.example -t AP-SECTOR-01
+
+# 5. Validate a custom JSON capture against the collector self-test suite
+ubnt-exporter test collectors -f testdata/fixtures/af5xhd_ptp.json
+```
 
 ---
 
@@ -88,11 +118,11 @@ Execute all 4 verification suites inside the container without requiring the Go 
 docker exec ubnt-exporter ubnt-exporter test
 # Or run a specific suite:
 docker exec ubnt-exporter ubnt-exporter test collectors
-docker exec ubnt-exporter ubnt-exporter test connectivity -t MST4
+docker exec ubnt-exporter ubnt-exporter test connectivity -t AP1
 ```
 
-1. **`metrics`**: Verifies schema integrity (`ubnt_` prefix, valid Prometheus label names, non-empty HELP) across all 205 metric definitions.
-2. **`collectors`**: Executes synthetic unit tests for AirMAX AC and AirFiber 5XHD payloads across `system`, `interfaces`, `wireless`, `peers`, and `airfiber`.
+1. **`metrics`**: Verifies schema integrity (`ubnt_` prefix, valid Prometheus label names, non-empty HELP) across all 159 metric definitions.
+2. **`collectors`**: Executes synthetic unit tests for AirMAX AC and AirFiber 5XHD payloads across `system`, `interfaces`, `wireless`, `peers`, and `airfiber` (plus optional `-f <fixture.json>` validation).
 3. **`connectivity`**: Tests TCP socket reachability, TLS handshake (including negative serial X.509 certificates), API login (`X-Auth-Token`), and a full scrape dry-run.
 4. **`endpoint`**: Queries the local `/metrics` endpoint and counts active `ubnt_*` series.
 
@@ -103,19 +133,19 @@ docker exec ubnt-exporter ubnt-exporter test connectivity -t MST4
 `ubnt-exporter` uses Go's linear-time **RE2** regular expression engine (`regexp`), guaranteeing $O(n)$ execution and immunity against ReDoS attacks. Static semantic presets are pre-compiled at startup via `regexp.MustCompile`, while user-supplied patterns are compiled dynamically via `regexp.Compile` with descriptive error reporting if unsupported syntax (such as lookarounds `(?=...)`) is used.
 
 ```bash
-# List all built-in semantic presets (English & Spanish aliases)
+# List all built-in semantic presets
 ubnt-exporter query presets
 
-# Query live signal, SNR, noise floor, and chain imbalance on MST4
-ubnt-exporter query señal -t MST4
+# Query live signal, SNR, noise floor, and chain imbalance on AP1
+ubnt-exporter query signal -t AP1
 
-# Query CPU, RAM, temperature, and uptime across all devices matching ^MST.*
-ubnt-exporter query cpu -t "^MST.*"
+# Query CPU, RAM, temperature, and uptime across all devices matching ^AP.*
+ubnt-exporter query cpu -t "^AP.*"
 
 # Query using a custom RE2 regular expression
-ubnt-exporter query -r "ubnt_peer_(rx|tx)_bytes|snr" -t MST4
+ubnt-exporter query -r "ubnt_peer_(rx|tx)_bytes|snr" -t AP1
 
-# Explore the 205 metric definitions offline by RE2 pattern
+# Explore the 159 metric definitions offline by RE2 pattern
 ubnt-exporter metrics -r "gps|ntp|vlan"
 ```
 
@@ -158,7 +188,7 @@ RESULT: Configuration is VALID
 #### 2. Duplicate IP Address
 
 ```text
- - duplicate device IP "10.0.0.1" detected (used by 'AP-01' and 'AP-02')
+ - duplicate device IP "192.168.1.10" detected (used by 'AP1' and 'AP2')
 ```
 
 **Fix:** Ensure every device in `config.yaml` has a distinct IP address.
@@ -166,7 +196,7 @@ RESULT: Configuration is VALID
 #### 3. Duplicate Device Name
 
 ```text
- - duplicate device name "SAPTPCHP_AP" detected (configured on IPs "10.1.1.157" and "10.1.1.90")
+ - duplicate device name "AP-SECTOR-01" detected (configured on IPs "192.168.1.10" and "192.168.1.20")
 ```
 
 **Fix:** Ensure every device in `config.yaml` has a distinct and unique `name` string to avoid label collisions and time series overwrites in Prometheus.
@@ -230,12 +260,12 @@ defaults:
         region: us-east
 devices:
     - name: AP-SECTOR-01
-      ip: 10.0.0.1
+      ip: 192.168.1.10
       labels:
         sector: alpha
         tower: tower-north
     - name: AP-BACKHAUL-01
-      ip: 10.0.0.2
+      ip: 192.168.1.20
       username: custom_admin
       password: '******'
       ssl: true
@@ -270,16 +300,16 @@ Output excerpt:
 --- PROMETHEUS METRICS PREVIEW ---
 # HELP ubnt_build_info Build and version information for ubnt-exporter
 # TYPE ubnt_build_info gauge
-ubnt_build_info{branch="main",goversion="go1.27.3",revision="manual",version="1.1.2"} 1
+ubnt_build_info{branch="main",goversion="go1.27.3",revision="manual",version="1.2.0"} 1
 # HELP ubnt_ap_cpu_usage_percent CPU Usage %
 # TYPE ubnt_ap_cpu_usage_percent gauge
-ubnt_ap_cpu_usage_percent{ip="10.0.0.1",name="AP-SECTOR-01",network="core",region="us-east",sector="alpha",tower="tower-north"} 14
+ubnt_ap_cpu_usage_percent{ip="192.168.1.10",name="AP-SECTOR-01",network="core",region="us-east",role="",sector="alpha",tower="tower-north"} 14
 # HELP ubnt_peer_signal_dbm Peer Signal
 # TYPE ubnt_peer_signal_dbm gauge
-ubnt_peer_signal_dbm{ap_ip="10.0.0.1",ap_name="AP-SECTOR-01",peer_ip="10.0.0.55",peer_name="CPE-CLIENT-01"} -58
+ubnt_peer_signal_dbm{ap_ip="192.168.1.10",ap_name="AP-SECTOR-01",network="core",peer_ip="192.168.1.101",peer_name="CPE-CLIENT-01",region="us-east",role="",sector="alpha",tower="tower-north"} -58
 # HELP ubnt_peer_chain_imbalance_db Chain Imbalance
 # TYPE ubnt_peer_chain_imbalance_db gauge
-ubnt_peer_chain_imbalance_db{ap_ip="10.0.0.1",ap_name="AP-SECTOR-01",peer_ip="10.0.0.55",peer_name="CPE-CLIENT-01"} 1.2
+ubnt_peer_chain_imbalance_db{ap_ip="192.168.1.10",ap_name="AP-SECTOR-01",network="core",peer_ip="192.168.1.101",peer_name="CPE-CLIENT-01",region="us-east",role="",sector="alpha",tower="tower-north"} 1.2
 ```
 
 ---
@@ -298,9 +328,9 @@ Sample output:
 +----------------+---------------+------------+-----------+-----------+---------------+----------+----------+
 | Access Point   | Target IP     | Status     | Signal    | Noise     | Chain Delta   | Clients  | Capacity |
 +================+===============+============+===========+===========+===============+==========+==========+
-| AP-SECTOR-01   | 10.0.0.1      | Online     | -58 dBm   | -96 dBm   | 1.0 dB        | 18       | 285 Mbps |
-| AP-BACKHAUL-01 | 10.0.0.2      | Online     | -62 dBm   | -98 dBm   | 0.5 dB        | 1        | 450 Mbps |
-| AP-SECTOR-02   | 10.0.0.3      | Online     | -79 dBm   | -91 dBm   | 6.5 dB (!)    | 7        | 110 Mbps |
+| AP-SECTOR-01   | 192.168.1.10  | Online     | -58 dBm   | -96 dBm   | 1.0 dB        | 18       | 285 Mbps |
+| AP-BACKHAUL-01 | 192.168.1.20  | Online     | -62 dBm   | -98 dBm   | 0.5 dB        | 1        | 450 Mbps |
+| AP-SECTOR-02   | 192.168.1.30  | Online     | -79 dBm   | -91 dBm   | 6.5 dB (!)    | 7        | 110 Mbps |
 +----------------+---------------+------------+-----------+-----------+---------------+----------+----------+
 Audited devices: 3 | Online: 3 | Warning chain delta (>5 dB): 1
 ```
@@ -341,11 +371,13 @@ AirFiber radios depend on GPS satellite timing to synchronize TDD frame transmit
 
 ### DFS Radar CAC and Lockout Timers
 
-When operating in Dynamic Frequency Selection (DFS) bands (5.3 GHz and 5.4 GHz):
+When operating in Dynamic Frequency Selection (DFS) bands (5.3 GHz and 5.4 GHz) on either AirMAX or AirFiber devices:
 
-- `ubnt_af_dfs_blocked_status`: Value `1` indicates Channel Availability Check (CAC) is currently scanning the channel before transmission can begin.
-- `ubnt_af_dfs_cac_remaining_seconds`: Shows the remaining CAC countdown timer in seconds (typically 60 to 600 seconds).
-- `ubnt_af_dfs_lockout_total`: Increments whenever radar energy is detected, causing the radio to evacuate the frequency for a mandatory 30-minute non-occupancy period.
+- `ubnt_ap_dfs_enabled`: Value `1` indicates DFS is enabled on the active radio channel.
+- `ubnt_ap_dfs_status`: Value `1` indicates Channel Availability Check (CAC) is currently scanning the channel before transmission can begin.
+- `ubnt_ap_dfs_cac_duration_seconds`: Configured total CAC scan duration in seconds.
+- `ubnt_ap_dfs_cac_rem_seconds`: Shows the remaining CAC countdown timer in seconds (typically 60 to 600 seconds).
+- `ubnt_ap_dfs_lockout_count`: Number of frequencies currently locked out due to radar energy detection during the mandatory 30-minute non-occupancy period.
 
 ---
 

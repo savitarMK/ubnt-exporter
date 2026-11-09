@@ -79,7 +79,7 @@ In daemon mode, `ubnt-exporter` runs a background worker loop:
 Similar to the Prometheus Blackbox or SNMP exporter, multi-target mode queries individual devices on demand:
 
 ```text
-GET http://exporter-host:8000/probe?target=10.0.0.1
+GET http://exporter-host:8000/probe?target=192.168.1.10
 ```
 
 The exporter immediately initiates an isolated scrape against the specified device and returns metrics directly in the HTTP response.
@@ -147,9 +147,9 @@ scrape_configs:
     metrics_path: "/probe"
     static_configs:
       - targets:
-          - "10.0.0.1"
-          - "10.0.0.2"
-          - "10.0.0.3"
+          - "192.168.1.10"
+          - "192.168.1.20"
+          - "192.168.1.30"
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -163,44 +163,59 @@ scrape_configs:
 
 ## Comprehensive Metric Reference
 
-All metrics are exposed with the `ubnt_` prefix.
+All 159 metrics are exposed with the `ubnt_` prefix.
+
+> [!TIP]
+> **Universal Custom Label Propagation for Grafana Dashboards:**
+> Any custom dimensional labels defined under `defaults.labels` or `devices[].labels` in `config.yaml` (such as `region`, `network`, `tower`, `sector`, `pop`, `area`, `role`) are automatically discovered and injected into **every exported metric** across all 5 collectors (`system`, `wireless`, `airfiber`, `interfaces`, `peers`, and `scrape_success`/`scrape_error`). You can filter and aggregate any metric directly in Grafana panels (e.g., `avg by (pop, area) (ubnt_ap_signal_dbm)` or `ubnt_peer_signal_dbm{tower="$tower", sector="$sector"}`) without writing `group_left` PromQL joins.
 
 ### Device System Metrics
 
 | Metric Name | Type | Unit | Description |
 | :--- | :--- | :--- | :--- |
-| `ubnt_device_static_info` | Gauge | Info | Static hardware metadata: `device_model`, `firmware`, `hostname`, `mac`, and custom user labels. Value is always `1`. |
+| `ubnt_device_static_info` | Gauge | Info | Static device metadata (`name`, `ip`) and custom inventory labels. Value is always `1`. |
+| `ubnt_device_cpu_info` | Gauge | Info | Hardware CPU architecture identifier (`cpu_identifier`, e.g., `MIPS 74Kc V4.12` or `ARMv7 Processor rev 1 (v7l)`). Value is `1`. |
+| `ubnt_device_timestamp_seconds` | Gauge | Timestamp | Unix epoch timestamp in seconds reported by the device clock. |
 | `ubnt_ap_cpu_usage_percent` | Gauge | Percent | Current CPU load percentage (`0` to `100`). |
 | `ubnt_ap_ram_usage_percent` | Gauge | Percent | Current RAM memory consumption percentage (`0` to `100`). |
 | `ubnt_ram_free_bytes` | Gauge | Bytes | Free system RAM in bytes. |
+| `ubnt_ram_used_bytes` | Gauge | Bytes | Used system RAM in bytes (`total - free`). |
 | `ubnt_ram_total_bytes` | Gauge | Bytes | Total system RAM in bytes. |
+| `ubnt_device_temperature_celsius` | Gauge | °C | Internal board/CPU hardware sensor temperature (`sensor` label, e.g., `Board`, `CPU`, `Board (PHY)`). |
 | `ubnt_ap_uptime_seconds` | Gauge | Seconds | Target radio operating system uptime in seconds. |
-| `ubnt_device_power_time_seconds` | Gauge | Seconds | Device uptime since cold power-on in seconds (AirMAX & AirFiber). |
-| `ubnt_af_power_time_seconds` | Gauge | Seconds | Legacy alias for cold power uptime (AirFiber). |
+| `ubnt_device_power_time_seconds` | Gauge | Seconds | Device uptime since cold power-on in seconds (unified across AirMAX & AirFiber). |
+| `ubnt_ap_gps_fix` | Gauge | State | Local GPS fix status (`1` = valid fix, `0` = no fix). |
+| `ubnt_ap_latitude` | Gauge | Degrees | Local GPS latitude coordinate. |
+| `ubnt_ap_longitude` | Gauge | Degrees | Local GPS longitude coordinate. |
 | `ubnt_device_gps_dimension` | Gauge | Dimension | Local GPS fix dimension (`0` = none, `2` = 2D, `3` = 3D). |
-| `ubnt_device_gps_altitude_meters` | Gauge | Meters | Local GPS altitude above sea level in meters. |
-| `ubnt_device_gps_satellites` | Gauge | Count | Number of GPS satellites tracked by the local device. |
-| `ubnt_device_gps_dop` | Gauge | Factor | Local GPS Dilution of Precision (DOP). |
+| `ubnt_af_gps_altitude_meters` | Gauge | Meters | Local GPS altitude above sea level in meters. |
+| `ubnt_af_gps_satellites` | Gauge | Count | Number of GPS satellites tracked by the local device. |
+| `ubnt_af_gps_dop` | Gauge | Factor | Local GPS Dilution of Precision (DOP). |
 | `ubnt_device_gps_time_sync_enabled` | Gauge | State | Local GPS time synchronization enabled (`1` = true, `0` = false). |
 | `ubnt_device_ntp_sync_enabled` | Gauge | State | Local NTP client time synchronization enabled (`1` = true, `0` = false). |
 | `ubnt_device_ntp_last_sync_timestamp_seconds` | Gauge | Timestamp | Unix epoch timestamp in seconds of the last local NTP synchronization. |
 
 ### Wireless Access Point Metrics
 
+Shared across both AirMAX (M/AC) and AirFiber / LTU radios:
+
 | Metric Name | Type | Unit | Description |
 | :--- | :--- | :--- | :--- |
 | `ubnt_ap_link_state` | Gauge | State | Radio Link State (`1` = connected, `0` = disconnected). |
 | `ubnt_ap_service_uptime_seconds` | Gauge | Seconds | Wireless radio service driver uptime in seconds. |
+| `ubnt_ap_service_time_seconds` | Gauge | Seconds | Total wireless radio service active time in seconds. |
 | `ubnt_ap_signal_dbm` | Gauge | dBm | Average received signal strength at the AP. |
 | `ubnt_ap_noise_floor_dbm` | Gauge | dBm | RF noise floor measured at the operating channel. |
-| `ubnt_ap_snr_db` | Gauge | dB | Signal-to-Noise Ratio (SNR) in dB measured at the AP. |
+| `ubnt_ap_snr_db` | Gauge | dB | Signal-to-Noise Ratio (SNR) in dB measured at the AP (with automatic radio noiseFloor fallback on AirFiber/LTU). |
 | `ubnt_ap_frequency_mhz` | Gauge | MHz | Center radio channel frequency in MHz. |
 | `ubnt_ap_control_frequency_mhz` | Gauge | MHz | Primary control frequency in MHz. |
-| `ubnt_ap_channel_width_mhz` | Gauge | MHz | Channel bandwidth in MHz (e.g. `10`, `20`, `40`, `80`, `100`). |
+| `ubnt_ap_channel_width_mhz` | Gauge | MHz | Transmit/operating channel bandwidth in MHz (e.g. `10`, `20`, `30`, `40`, `50`, `80`, `100`). |
 | `ubnt_ap_output_power_dbm` | Gauge | dBm | Conducted radio transmit power. |
 | `ubnt_ap_output_power_eirp_dbm` | Gauge | dBm | Effective Isotropic Radiated Power. |
 | `ubnt_connected_clients_total` | Gauge | Count | Number of active connected wireless stations/peers. |
+| `ubnt_ap_dfs_enabled` | Gauge | State | Dynamic Frequency Selection (DFS) enabled on radio (`1` = enabled, `0` = disabled). |
 | `ubnt_ap_dfs_status` | Gauge | State | Dynamic Frequency Selection status (`0` = normal, `1` = CAC scanning). |
+| `ubnt_ap_dfs_cac_duration_seconds` | Gauge | Seconds | Total configured DFS Channel Availability Check (CAC) scan duration in seconds. |
 | `ubnt_ap_dfs_cac_rem_seconds` | Gauge | Seconds | DFS Channel Availability Check remaining countdown timer. |
 | `ubnt_ap_dfs_lockout_count` | Gauge | Count | Number of DFS frequencies locked out due to radar detection. |
 
@@ -266,32 +281,22 @@ Station metrics include the following identification labels: `ap_name`, `ap_ip`,
 | `ubnt_peer_rx_pps` | Gauge | PPS | Instantaneous packet reception rate from the station. |
 | `ubnt_peer_tx_pps` | Gauge | PPS | Instantaneous packet transmission rate to the station. |
 
-### AirFiber 5XHD Metrics
+### AirFiber 5XHD / LTU Exclusive Metrics
+
+Common system (`ubnt_device_*`, `ubnt_ap_cpu_*`, `ubnt_ap_ram_*`), wireless (`ubnt_ap_*`), interface (`ubnt_iface_*`), and peer (`ubnt_peer_*`) metrics are shared across both AirMAX and AirFiber without duplication. The `airfiber` collector emits only the TDD backhaul and split-frequency metrics exclusive to AirFiber / LTU hardware:
 
 | Metric Name | Type | Unit | Description |
 | :--- | :--- | :--- | :--- |
-| `ubnt_af_temperature_celsius` | Gauge | °C | Internal chassis operating temperature. |
-| `ubnt_af_gps_satellites` | Gauge | Count | Number of GPS satellites currently tracked. |
-| `ubnt_af_gps_dop` | Gauge | Factor | GPS Dilution of Precision (lower values indicate higher precision). |
-| `ubnt_af_gps_altitude_meters` | Gauge | Meters | Radio antenna elevation above sea level in meters. |
-| `ubnt_af_frequency_tx_mhz` | Gauge | MHz | Configured transmit frequency for split-frequency operation. |
-| `ubnt_af_frequency_rx_mhz` | Gauge | MHz | Configured receive frequency for split-frequency operation. |
+| `ubnt_af_frequency_tx_mhz` | Gauge | MHz | Configured transmit frequency in MHz for split-frequency operation. |
+| `ubnt_af_frequency_rx_mhz` | Gauge | MHz | Configured receive frequency in MHz for split-frequency operation. |
+| `ubnt_af_channel_width_rx_mhz` | Gauge | MHz | Configured receive channel bandwidth in MHz for split-bandwidth operation. |
+| `ubnt_af_duty_cycle_dl_percent` | Gauge | Percent | TDD downlink/uplink split ratio percentage (`dlRatio`, e.g. `50`, `67`, `75`). |
 | `ubnt_af_frame_length_ms` | Gauge | ms | TDD radio frame duration in milliseconds (e.g. `2.0`, `2.5`, `5.0`). |
-| `ubnt_af_gps_sync_status` | Gauge | State | GPS TDD synchronization status (`1` = synchronized, `0` = free-run). |
-| `ubnt_af_local_autopower_state` | Gauge | Flag | Automatic power control active (`1` = enabled, `0` = disabled). |
-| `ubnt_af_duty_cycle_dl_percent` | Gauge | Percent | TDD downlink/uplink split ratio percentage (e.g. `50`, `67`, `75`). |
-| `ubnt_af_rx_efficiency_percent` | Gauge | Percent | Realized radio frame reception efficiency percentage. |
-| `ubnt_af_dfs_blocked_status` | Gauge | State | Dynamic Frequency Selection status (`0` = normal, `1` = CAC scanning). |
-| `ubnt_af_dfs_cac_remaining_seconds` | Gauge | Seconds | Channel Availability Check (CAC) countdown timer in seconds. |
-| `ubnt_af_dfs_lockout_total` | Gauge | Count | Number of frequency channels currently locked out due to radar detection. |
-| `ubnt_af_service_uptime_seconds` | Gauge | Seconds | Wireless radio service uptime in seconds. |
-| `ubnt_af_link_state` | Gauge | State | Radio Link State (`1` = connected, `0` = disconnected). |
-| `ubnt_af_channel_width_rx_mhz` | Gauge | MHz | Receive channel width in MHz (split-bandwidth). |
-| `ubnt_af_signal_delta_ideal_db` | Gauge | dB | Signal delta between measured and theoretical ideal signal ($S_{\text{real}} - S_{\text{ideal}}$). |
-| `ubnt_af_capacity_combined_bps` | Gauge | bps | Total combined DL+UL radio throughput capacity in bits per second. |
-| `ubnt_af_capacity_combined_ideal_bps` | Gauge | bps | Total combined theoretical ideal DL+UL capacity in bits per second. |
-| `ubnt_af_remote_gps_sync_status` | Gauge | State | Remote peer radio GPS synchronization status (`1` = synchronized, `0` = no sync). |
-| `ubnt_af_remote_ideal_signal_dbm` | Gauge | dBm | Theoretical ideal signal strength calculated at the remote peer radio. |
+| `ubnt_af_gps_sync_status` | Gauge | State | Local radio GPS TDD synchronization status (`1` = synchronized, `0` = free-run). |
+| `ubnt_af_rx_efficiency_percent` | Gauge | Percent | Realized local radio frame reception efficiency percentage. |
+| `ubnt_af_local_autopower_state` | Gauge | Flag | Local automatic transmit power control active (`1` = enabled, `0` = disabled). |
+| `ubnt_af_remote_gps_sync_status` | Gauge | State | Remote peer radio GPS TDD synchronization status (`1` = synchronized, `0` = free-run). |
+| `ubnt_af_remote_autopower_state` | Gauge | Flag | Remote peer automatic transmit power control active (`1` = enabled, `0` = disabled). |
 
 ### Network Interface Metrics
 
@@ -391,7 +396,7 @@ groups:
           runbook_url: "docs/diagnostics.md#troubleshooting-common-airos-quirks"
 
       - alert: UbntAirFiberLinkDown
-        expr: ubnt_af_link_state == 0
+        expr: ubnt_ap_link_state == 0
         for: 1m
         labels:
           severity: critical
@@ -456,7 +461,7 @@ groups:
           runbook_url: "docs/diagnostics.md#airfiber-diagnostic-audits"
 
       - alert: UbntAirFiberDFSBlocked
-        expr: ubnt_af_dfs_blocked_status == 1
+        expr: ubnt_ap_dfs_status == 1
         for: 1m
         labels:
           severity: warning
@@ -497,7 +502,7 @@ groups:
           runbook_url: "docs/diagnostics.md#detecting-degraded-ethernet-ports"
 
       - alert: UbntAirFiberHighTemperature
-        expr: ubnt_af_temperature_celsius > 75
+        expr: ubnt_device_temperature_celsius > 75
         for: 15m
         labels:
           severity: warning

@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -17,6 +18,47 @@ import (
 	"ubnt-exporter/internal/utils"
 )
 
+func firstNonEmpty(vals []string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
+}
+
+func buildOfflineScrapers(invConf *config.InventoryConfig, sysConf *config.SystemConfig, dynamicKeys []string, targetFilter string, fixturePath string) ([]*scraper.DeviceScraper, error) {
+	if strings.TrimSpace(targetFilter) != "" {
+		if _, _, err := CompileUserRegex(targetFilter); err != nil {
+			return nil, err
+		}
+	}
+	if invConf != nil && len(invConf.Devices) > 0 && strings.TrimSpace(targetFilter) != "" {
+		scrapers := scraper.BuildScrapers(invConf, sysConf, dynamicKeys)
+		filtered, err := FilterScrapersByTarget(scrapers, targetFilter)
+		if err != nil {
+			return nil, err
+		}
+		if len(filtered) > 0 {
+			return filtered, nil
+		}
+	}
+	name := strings.TrimSpace(targetFilter)
+	if name == "" {
+		base := filepath.Base(fixturePath)
+		ext := filepath.Ext(base)
+		name = strings.TrimSuffix(base, ext)
+		if name == "" {
+			name = "offline-fixture"
+		}
+	}
+	var defaultLabels map[string]string
+	if invConf != nil && len(invConf.Defaults.Labels) > 0 {
+		defaultLabels = invConf.Defaults.Labels
+	}
+	return []*scraper.DeviceScraper{scraper.NewOfflineScraper(name, "127.0.0.1", defaultLabels, dynamicKeys)}, nil
+}
+
 type diagDeviceResult struct {
 	Name        string
 	IP          string
@@ -30,17 +72,27 @@ type diagDeviceResult struct {
 	Capacity    string
 }
 
-// CmdDiag performs a live diagnostic scrape and prints an RF link quality ASCII table.
-func CmdDiag(sysConf *config.SystemConfig, invConf *config.InventoryConfig, targetFilter string) int {
+// CmdDiag performs a live diagnostic scrape (or offline fixture replay) and prints an RF link quality ASCII table.
+func CmdDiag(sysConf *config.SystemConfig, invConf *config.InventoryConfig, targetFilter string, fromFile ...string) int {
+	fixturePath := firstNonEmpty(fromFile)
 	fmt.Println("\n LIVE WIRELESS DIAGNOSTICS")
+	if fixturePath != "" {
+		fmt.Printf(" Source Fixture: %s\n", fixturePath)
+	}
 	fmt.Println("=====================================================================================================")
 
 	store := metrics.GetStore()
 	dynamicKeys := config.DiscoverCustomLabels(invConf)
 	store.RegisterDynamicLabels(dynamicKeys)
 
-	scrapers := scraper.BuildScrapers(invConf, sysConf, dynamicKeys)
-	filtered, err := FilterScrapersByTarget(scrapers, targetFilter)
+	var filtered []*scraper.DeviceScraper
+	var err error
+	if fixturePath != "" {
+		filtered, err = buildOfflineScrapers(invConf, sysConf, dynamicKeys, targetFilter, fixturePath)
+	} else {
+		scrapers := scraper.BuildScrapers(invConf, sysConf, dynamicKeys)
+		filtered, err = FilterScrapersByTarget(scrapers, targetFilter)
+	}
 	if err != nil {
 		fmt.Printf("ERROR in target filter: %v\n", err)
 		return 1
@@ -51,17 +103,26 @@ func CmdDiag(sysConf *config.SystemConfig, invConf *config.InventoryConfig, targ
 		return 1
 	}
 
-	client := scraper.NewHTTPClient(time.Duration(sysConf.Performance.SocketTimeout) * time.Second)
 	diagCtx := logger.WithTraceID(context.Background(), "diag")
-	var wg sync.WaitGroup
-	for _, sc := range filtered {
-		wg.Add(1)
-		go func(s *scraper.DeviceScraper) {
-			defer wg.Done()
-			s.Scrape(diagCtx, client, store, true)
-		}(sc)
+	if fixturePath != "" {
+		for _, sc := range filtered {
+			if fErr := sc.ScrapeFile(diagCtx, fixturePath, store, true); fErr != nil {
+				fmt.Printf("ERROR loading fixture %q: %v\n", fixturePath, fErr)
+				return 1
+			}
+		}
+	} else {
+		client := scraper.NewHTTPClient(time.Duration(sysConf.Performance.SocketTimeout) * time.Second)
+		var wg sync.WaitGroup
+		for _, sc := range filtered {
+			wg.Add(1)
+			go func(s *scraper.DeviceScraper) {
+				defer wg.Done()
+				s.Scrape(diagCtx, client, store, true)
+			}(sc)
+		}
+		wg.Wait()
 	}
-	wg.Wait()
 
 	results := make([]diagDeviceResult, len(filtered))
 	for idx, s := range filtered {
@@ -155,8 +216,9 @@ func CmdDiag(sysConf *config.SystemConfig, invConf *config.InventoryConfig, targ
 	return 0
 }
 
-// CmdInspect performs a live scrape of a device and groups all collected metrics by collector module.
-func CmdInspect(sysConf *config.SystemConfig, invConf *config.InventoryConfig, targetFilter string, regexFilter string) int {
+// CmdInspect performs a live scrape (or offline fixture replay) of a device and groups all collected metrics by collector module.
+func CmdInspect(sysConf *config.SystemConfig, invConf *config.InventoryConfig, targetFilter string, regexFilter string, fromFile ...string) int {
+	fixturePath := firstNonEmpty(fromFile)
 	re, resolvedDesc, rErr := CompileUserRegex(regexFilter)
 	if rErr != nil {
 		fmt.Printf("ERROR: %v\n", rErr)
@@ -167,8 +229,14 @@ func CmdInspect(sysConf *config.SystemConfig, invConf *config.InventoryConfig, t
 	dynamicKeys := config.DiscoverCustomLabels(invConf)
 	store.RegisterDynamicLabels(dynamicKeys)
 
-	scrapers := scraper.BuildScrapers(invConf, sysConf, dynamicKeys)
-	filtered, tErr := FilterScrapersByTarget(scrapers, targetFilter)
+	var filtered []*scraper.DeviceScraper
+	var tErr error
+	if fixturePath != "" {
+		filtered, tErr = buildOfflineScrapers(invConf, sysConf, dynamicKeys, targetFilter, fixturePath)
+	} else {
+		scrapers := scraper.BuildScrapers(invConf, sysConf, dynamicKeys)
+		filtered, tErr = FilterScrapersByTarget(scrapers, targetFilter)
+	}
 	if tErr != nil {
 		fmt.Printf("ERROR in target filter: %v\n", tErr)
 		return 1
@@ -181,16 +249,26 @@ func CmdInspect(sysConf *config.SystemConfig, invConf *config.InventoryConfig, t
 	target := filtered[0]
 
 	fmt.Printf("\n DEEP COLLECTOR INSPECTION: %s (%s)\n", target.Name, target.IP)
+	if fixturePath != "" {
+		fmt.Printf(" Source Fixture: %s\n", fixturePath)
+	}
 	if resolvedDesc != "" {
 		fmt.Printf(" Filter: %s\n", resolvedDesc)
 	}
 	fmt.Println("======================================================================")
 
-	client := scraper.NewHTTPClient(time.Duration(sysConf.Performance.SocketTimeout) * time.Second)
 	ctx := logger.WithTraceID(context.Background(), "inspect")
-	if !target.Scrape(ctx, client, store, true) {
-		fmt.Printf("ERROR: Scrape failed for device %s (%s).\n", target.Name, target.IP)
-		return 1
+	if fixturePath != "" {
+		if fErr := target.ScrapeFile(ctx, fixturePath, store, true); fErr != nil {
+			fmt.Printf("ERROR loading fixture %q: %v\n", fixturePath, fErr)
+			return 1
+		}
+	} else {
+		client := scraper.NewHTTPClient(time.Duration(sysConf.Performance.SocketTimeout) * time.Second)
+		if !target.Scrape(ctx, client, store, true) {
+			fmt.Printf("ERROR: Scrape failed for device %s (%s).\n", target.Name, target.IP)
+			return 1
+		}
 	}
 
 	reg := prometheus.NewRegistry()
@@ -242,8 +320,7 @@ func CmdInspect(sysConf *config.SystemConfig, invConf *config.InventoryConfig, t
 			case strings.HasPrefix(name, "ubnt_device_") || strings.HasPrefix(name, "ubnt_af_gps_") ||
 				strings.HasPrefix(name, "ubnt_ap_cpu_") || strings.HasPrefix(name, "ubnt_ap_ram_") ||
 				strings.HasPrefix(name, "ubnt_ap_uptime_") || strings.HasPrefix(name, "ubnt_ap_gps_") ||
-				strings.HasPrefix(name, "ubnt_ap_latitude") || strings.HasPrefix(name, "ubnt_ap_longitude") ||
-				strings.HasPrefix(name, "ubnt_af_power_time"):
+				strings.HasPrefix(name, "ubnt_ap_latitude") || strings.HasPrefix(name, "ubnt_ap_longitude"):
 				groups["1. System, CPU, Memory, GPS & NTP"] = append(groups["1. System, CPU, Memory, GPS & NTP"], line)
 			default:
 				groups["3. Wireless Radio & AirFiber RF"] = append(groups["3. Wireless Radio & AirFiber RF"], line)
@@ -273,8 +350,9 @@ func CmdInspect(sysConf *config.SystemConfig, invConf *config.InventoryConfig, t
 	return 0
 }
 
-// CmdExport performs a one-shot scrape and prints the full Prometheus exposition output.
-func CmdExport(sysConf *config.SystemConfig, invConf *config.InventoryConfig, targetFilter string, regexFilter string) int {
+// CmdExport performs a one-shot scrape (or offline fixture replay) and prints the full Prometheus exposition output.
+func CmdExport(sysConf *config.SystemConfig, invConf *config.InventoryConfig, targetFilter string, regexFilter string, fromFile ...string) int {
+	fixturePath := firstNonEmpty(fromFile)
 	re, resolvedDesc, rErr := CompileUserRegex(regexFilter)
 	if rErr != nil {
 		fmt.Printf("ERROR: %v\n", rErr)
@@ -282,6 +360,9 @@ func CmdExport(sysConf *config.SystemConfig, invConf *config.InventoryConfig, ta
 	}
 
 	fmt.Println("\n ONE-SHOT EXPORT (Dry Run)")
+	if fixturePath != "" {
+		fmt.Printf(" Source Fixture: %s\n", fixturePath)
+	}
 	if resolvedDesc != "" {
 		fmt.Printf(" Filter: %s\n", resolvedDesc)
 	}
@@ -296,8 +377,14 @@ func CmdExport(sysConf *config.SystemConfig, invConf *config.InventoryConfig, ta
 	reg.MustRegister(metrics.NewBuildInfoGauge())
 	metrics.GetTelemetry().Register(reg)
 
-	scrapers := scraper.BuildScrapers(invConf, sysConf, dynamicKeys)
-	filtered, tErr := FilterScrapersByTarget(scrapers, targetFilter)
+	var filtered []*scraper.DeviceScraper
+	var tErr error
+	if fixturePath != "" {
+		filtered, tErr = buildOfflineScrapers(invConf, sysConf, dynamicKeys, targetFilter, fixturePath)
+	} else {
+		scrapers := scraper.BuildScrapers(invConf, sysConf, dynamicKeys)
+		filtered, tErr = FilterScrapersByTarget(scrapers, targetFilter)
+	}
 	if tErr != nil {
 		fmt.Printf("ERROR in target filter: %v\n", tErr)
 		return 1
@@ -308,18 +395,26 @@ func CmdExport(sysConf *config.SystemConfig, invConf *config.InventoryConfig, ta
 		return 1
 	}
 
-	client := scraper.NewHTTPClient(time.Duration(sysConf.Performance.SocketTimeout) * time.Second)
-
 	exportCtx := logger.WithTraceID(context.Background(), "export")
-	var wg sync.WaitGroup
-	for _, sc := range filtered {
-		wg.Add(1)
-		go func(s *scraper.DeviceScraper) {
-			defer wg.Done()
-			s.Scrape(exportCtx, client, store, true)
-		}(sc)
+	if fixturePath != "" {
+		for _, sc := range filtered {
+			if fErr := sc.ScrapeFile(exportCtx, fixturePath, store, true); fErr != nil {
+				fmt.Printf("ERROR loading fixture %q: %v\n", fixturePath, fErr)
+				return 1
+			}
+		}
+	} else {
+		client := scraper.NewHTTPClient(time.Duration(sysConf.Performance.SocketTimeout) * time.Second)
+		var wg sync.WaitGroup
+		for _, sc := range filtered {
+			wg.Add(1)
+			go func(s *scraper.DeviceScraper) {
+				defer wg.Done()
+				s.Scrape(exportCtx, client, store, true)
+			}(sc)
+		}
+		wg.Wait()
 	}
-	wg.Wait()
 
 	fmt.Println("\n--- PROMETHEUS METRICS PREVIEW ---")
 	mfs, err := reg.Gather()

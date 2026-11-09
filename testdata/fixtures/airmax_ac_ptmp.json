@@ -1,0 +1,446 @@
+[
+  {
+    "timestamp": 1794243197392,
+    "device": {
+      "cpu": [
+        {
+          "identifier": "MIPS 74Kc V4.12",
+          "usage": 12
+        }
+      ],
+      "ram": {
+        "usage": 63,
+        "free": 23257088,
+        "total": 63447040
+      },
+      "temperatures": [],
+      "uptime": 1715967,
+      "gps": {
+        "fix": false,
+        "lat": 19.432608,
+        "lon": -99.133209
+      },
+      "powerTime": 1715967
+    },
+    "interfaces": [
+      {
+        "id": "eth0",
+        "name": "",
+        "statistics": {
+          "txDropped": 0,
+          "rxDropped": 0,
+          "txErrors": 0,
+          "rxErrors": 2,
+          "txRate": 42229,
+          "rxRate": 1272883,
+          "txBytes": 94850738761,
+          "rxBytes": 261348376819,
+          "txPackets": 135240371,
+          "rxPackets": 235191830,
+          "txPPS": 38,
+          "rxPPS": 138,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      },
+      {
+        "id": "ath0",
+        "name": "",
+        "statistics": {
+          "txDropped": 12,
+          "rxDropped": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 1330024,
+          "rxRate": 32923,
+          "txBytes": 271411770503,
+          "rxBytes": 98671765389,
+          "txPackets": 236034364,
+          "rxPackets": 135656865,
+          "txPPS": 138,
+          "rxPPS": 36,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      },
+      {
+        "id": "ath0.99",
+        "name": "",
+        "statistics": {
+          "txDropped": 1,
+          "rxDropped": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 8316,
+          "rxRate": 0,
+          "txBytes": 1874352859,
+          "rxBytes": 0,
+          "txPackets": 15553579,
+          "rxPackets": 0,
+          "txPPS": 10,
+          "rxPPS": 0,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      },
+      {
+        "id": "eth0.99",
+        "name": "",
+        "statistics": {
+          "txDropped": 2,
+          "rxDropped": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 18218,
+          "rxRate": 9931,
+          "txBytes": 37581346,
+          "rxBytes": 1643909092,
+          "txPackets": 181954,
+          "rxPackets": 15448076,
+          "txPPS": 2,
+          "rxPPS": 11,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      },
+      {
+        "id": "br0",
+        "name": "",
+        "statistics": {
+          "txDropped": 0,
+          "rxDropped": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 1175,
+          "rxRate": 4320,
+          "txBytes": 302112746,
+          "rxBytes": 987638819,
+          "txPackets": 683513,
+          "rxPackets": 5037360,
+          "txPPS": 0,
+          "rxPPS": 2,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      },
+      {
+        "id": "br1",
+        "name": "",
+        "statistics": {
+          "txDropped": 0,
+          "rxDropped": 0,
+          "txErrors": 0,
+          "rxErrors": 0,
+          "txRate": 18133,
+          "rxRate": 9548,
+          "txBytes": 34225115,
+          "rxBytes": 1582002035,
+          "txPackets": 124778,
+          "rxPackets": 15447253,
+          "txPPS": 2,
+          "rxPPS": 11,
+          "txJumbo": 0,
+          "rxJumbo": 0,
+          "txFlowCtrl": 0,
+          "rxFlowCtrl": 0,
+          "txBroadcast": 0,
+          "rxBroadcast": 0,
+          "txMulticast": 0,
+          "rxMulticast": 0
+        }
+      }
+    ],
+    "wireless": {
+      "serviceUptime": 1715848,
+      "serviceTime": 1715876,
+      "radios": [
+        {
+          "id": "main",
+          "linkState": "connected",
+          "frequency": {
+            "control": 5560,
+            "center": 5560
+          },
+          "channelWidth": {
+            "tx": 20
+          },
+          "outputPower": {
+            "conducted": 23,
+            "eirp": 42
+          },
+          "serviceUptime": 1715848,
+          "dfs": {
+            "enabled": false,
+            "cacDuration": 0,
+            "cacRemaining": 0,
+            "lockouts": []
+          }
+        }
+      ],
+      "peers": [
+        {
+          "common": {
+            "hostname": "CPE-CLIENT-01",
+            "mgmtIp": "192.168.1.101",
+            "uptime": 94479,
+            "distance": 1650,
+            "timestamp": 1794221594000,
+            "powerTime": 94478,
+            "serviceUptime": 94368,
+            "serviceTime": 94368,
+            "identification": {
+              "mac": "00:11:22:ce:92:52",
+              "product": "LiteBeam 5AC",
+              "model": "LBE-5AC-Gen2",
+              "family": "airmax-ac",
+              "firmwareVersion": "8.7.11",
+              "firmware": "WA.ar934x.v8.7.11.46972.220614.0420",
+              "subsystemID": "e7f9"
+            },
+            "cpu": [
+              {
+                "usage": 5
+              }
+            ],
+            "ram": {
+              "usage": 57,
+              "free": 27398144,
+              "total": 63447040
+            },
+            "counters": {
+              "rxRate": 26000,
+              "txRate": 0,
+              "rxBytes": 39050121344,
+              "txBytes": 5566273343
+            }
+          },
+          "local": [
+            {
+              "id": "main",
+              "connected": true,
+              "active": true,
+              "connectionTime": 94391,
+              "linkQuality": {
+                "airtime": {
+                  "dl": 70,
+                  "ul": 50
+                },
+                "nss": {
+                  "dl": 2,
+                  "ul": 2
+                },
+                "capacity": {
+                  "dl": 107900,
+                  "ul": 123500,
+                  "dlIdeal": 156000,
+                  "ulIdeal": 156000,
+                  "combined": 115700,
+                  "combinedIdeal": 156000
+                },
+                "cinr": {
+                  "dl": 31,
+                  "ul": 29
+                },
+                "linkScore": {
+                  "dl": 72,
+                  "ul": 78,
+                  "dl24": 72,
+                  "ul24": 73
+                },
+                "signal": -47,
+                "idealSignal": -46,
+                "noiseFloor": -90,
+                "signalPerChain": [
+                  -52,
+                  -53
+                ],
+                "idealSignalPerChain": [
+                  -46,
+                  -46
+                ],
+                "mcs": {
+                  "txIdx": 7,
+                  "txIdxIdeal": 8,
+                  "rxIdx": 7,
+                  "rxIdxIdeal": 8,
+                  "rxRate": 6,
+                  "txRate": 6,
+                  "txLabel": "64QAM",
+                  "rxLabel": "64QAM",
+                  "rxHistogram": [
+                    {
+                      "idx": 0,
+                      "rate": 1,
+                      "value": 2
+                    },
+                    {
+                      "idx": 1,
+                      "rate": 2,
+                      "value": 1
+                    },
+                    {
+                      "idx": 2,
+                      "rate": 2,
+                      "value": 0
+                    },
+                    {
+                      "idx": 3,
+                      "rate": 4,
+                      "value": 10
+                    },
+                    {
+                      "idx": 4,
+                      "rate": 4,
+                      "value": 3197
+                    },
+                    {
+                      "idx": 5,
+                      "rate": 6,
+                      "value": 938712
+                    },
+                    {
+                      "idx": 6,
+                      "rate": 6,
+                      "value": 1729540
+                    },
+                    {
+                      "idx": 7,
+                      "rate": 6,
+                      "value": 3172639
+                    },
+                    {
+                      "idx": 8,
+                      "rate": 8,
+                      "value": 648440
+                    },
+                    {
+                      "idx": 9,
+                      "rate": 8,
+                      "value": 0
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "remote": [
+            {
+              "id": "main",
+              "antenna": {
+                "gain": 23,
+                "loss": 0
+              },
+              "linkQuality": {
+                "outputPower": {
+                  "conducted": 23,
+                  "eirp": 46
+                },
+                "serviceUptime": 94368,
+                "signal": -49,
+                "idealSignal": -46,
+                "noiseFloor": -88,
+                "signalPerChain": [
+                  -51,
+                  -49
+                ],
+                "idealSignalPerChain": [
+                  -46,
+                  -46
+                ],
+                "mcs": {
+                  "rxHistogram": [
+                    {
+                      "idx": 0,
+                      "rate": 1,
+                      "value": 2
+                    },
+                    {
+                      "idx": 1,
+                      "rate": 2,
+                      "value": 0
+                    },
+                    {
+                      "idx": 2,
+                      "rate": 2,
+                      "value": 1
+                    },
+                    {
+                      "idx": 3,
+                      "rate": 4,
+                      "value": 10
+                    },
+                    {
+                      "idx": 4,
+                      "rate": 4,
+                      "value": 18
+                    },
+                    {
+                      "idx": 5,
+                      "rate": 6,
+                      "value": 77161
+                    },
+                    {
+                      "idx": 6,
+                      "rate": 6,
+                      "value": 878416
+                    },
+                    {
+                      "idx": 7,
+                      "rate": 6,
+                      "value": 8655827
+                    },
+                    {
+                      "idx": 8,
+                      "rate": 8,
+                      "value": 908759
+                    },
+                    {
+                      "idx": 9,
+                      "rate": 8,
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              "gps": {
+                "fix": false,
+                "lat": 19.440175,
+                "lon": -99.143942
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

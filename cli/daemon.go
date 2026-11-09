@@ -25,6 +25,18 @@ import (
 	"ubnt-exporter/internal/scraper"
 )
 
+func mapsEqual(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if b[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 // IsValidTraceID validates incoming trace identifiers to avoid header injection.
 func IsValidTraceID(s string) bool {
 	if len(s) == 0 || len(s) > 64 {
@@ -320,7 +332,7 @@ func CmdRunContext(parentCtx context.Context, reloadTrigger <-chan struct{}, con
 		for _, newSc := range newScrapers {
 			newIPSet[newSc.IP] = true
 			if prev, ok := oldByIP[newSc.IP]; ok {
-				if prev.Name != newSc.Name {
+				if prev.Name != newSc.Name || !mapsEqual(prev.CustomLabels, newSc.CustomLabels) {
 					store.RemoveDeviceMetrics(prev.Name, prev.IP)
 				}
 				if prev.Username == newSc.Username && prev.Password == newSc.Password && prev.SSL == newSc.SSL {

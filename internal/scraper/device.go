@@ -176,6 +176,22 @@ func NewHTTPClient(socketTimeout time.Duration) *http.Client {
 	}
 }
 
+func (d *DeviceScraper) baseLabels() map[string]string {
+	lbls := make(map[string]string, 2+len(d.DynamicKeys))
+	lbls["name"] = d.Name
+	lbls["ip"] = d.IP
+	for _, key := range d.DynamicKeys {
+		lbls[key] = d.CustomLabels[key]
+	}
+	return lbls
+}
+
+func (d *DeviceScraper) errorLabels(reason string) map[string]string {
+	lbls := d.baseLabels()
+	lbls["reason"] = reason
+	return lbls
+}
+
 func (d *DeviceScraper) login(ctx context.Context, client *http.Client, store *metrics.Store) (bool, error) {
 	loginURL := fmt.Sprintf("%s/user/login", d.BaseURL)
 	payload := map[string]string{
@@ -197,9 +213,7 @@ func (d *DeviceScraper) login(ctx context.Context, client *http.Client, store *m
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.ErrorContext(ctx, d.Name, "Login Unreachable: %v", err)
-		store.IncrementMetric("scrape_error", map[string]string{
-			"name": d.Name, "ip": d.IP, "reason": "connection_error",
-		}, 1.0)
+		store.IncrementMetric("scrape_error", d.errorLabels("connection_error"), 1.0)
 		metrics.GetTelemetry().RecordScrapeResult("conn_error")
 		return false, err
 	}
@@ -216,9 +230,7 @@ func (d *DeviceScraper) login(ctx context.Context, client *http.Client, store *m
 	}
 
 	logger.ErrorContext(ctx, d.Name, "Login Failed (Status: %d)", resp.StatusCode)
-	store.IncrementMetric("scrape_error", map[string]string{
-		"name": d.Name, "ip": d.IP, "reason": "auth_failed",
-	}, 1.0)
+	store.IncrementMetric("scrape_error", d.errorLabels("auth_failed"), 1.0)
 	metrics.GetTelemetry().RecordScrapeResult("auth_error")
 	return false, fmt.Errorf("login failed status %d", resp.StatusCode)
 }
@@ -228,7 +240,7 @@ func (d *DeviceScraper) Scrape(ctx context.Context, client *http.Client, store *
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	metaLabels := map[string]string{"name": d.Name, "ip": d.IP}
+	metaLabels := d.baseLabels()
 
 	if !dryRun && !d.NextAllowedScrape.IsZero() && time.Now().Before(d.NextAllowedScrape) {
 		store.UpdateMetric("scrape_success", metaLabels, 0.0)
@@ -289,15 +301,11 @@ func (d *DeviceScraper) Scrape(ctx context.Context, client *http.Client, store *
 		d.NextAllowedScrape = time.Now().Add(d.BackoffTime)
 		if errors.Is(err, context.DeadlineExceeded) {
 			logger.ErrorContext(ctx, d.Name, "Timeout. Backing off for %vs", d.BackoffTime.Seconds())
-			store.IncrementMetric("scrape_error", map[string]string{
-				"name": d.Name, "ip": d.IP, "reason": "timeout",
-			}, 1.0)
+			store.IncrementMetric("scrape_error", d.errorLabels("timeout"), 1.0)
 			metrics.GetTelemetry().RecordScrapeResult("timeout")
 		} else {
 			logger.ErrorContext(ctx, d.Name, "Conn Error: %v. Backing off for %vs", err, d.BackoffTime.Seconds())
-			store.IncrementMetric("scrape_error", map[string]string{
-				"name": d.Name, "ip": d.IP, "reason": "connection_error",
-			}, 1.0)
+			store.IncrementMetric("scrape_error", d.errorLabels("connection_error"), 1.0)
 			metrics.GetTelemetry().RecordScrapeResult("conn_error")
 			d.Token = ""
 		}
@@ -306,9 +314,7 @@ func (d *DeviceScraper) Scrape(ctx context.Context, client *http.Client, store *
 
 	if statusCode != http.StatusOK {
 		logger.WarnContext(ctx, d.Name, "HTTP Stats Error: %d", statusCode)
-		store.IncrementMetric("scrape_error", map[string]string{
-			"name": d.Name, "ip": d.IP, "reason": fmt.Sprintf("http_%d", statusCode),
-		}, 1.0)
+		store.IncrementMetric("scrape_error", d.errorLabels(fmt.Sprintf("http_%d", statusCode)), 1.0)
 		metrics.GetTelemetry().RecordScrapeResult("http_error")
 		return false
 	}
@@ -316,9 +322,7 @@ func (d *DeviceScraper) Scrape(ctx context.Context, client *http.Client, store *
 	data, err := decodeJSONSafe(body)
 	if err != nil {
 		logger.ErrorContext(ctx, d.Name, "JSON decode error: %v", err)
-		store.IncrementMetric("scrape_error", map[string]string{
-			"name": d.Name, "ip": d.IP, "reason": "decode_error",
-		}, 1.0)
+		store.IncrementMetric("scrape_error", d.errorLabels("decode_error"), 1.0)
 		metrics.GetTelemetry().RecordScrapeResult("decode_error")
 		return false
 	}
@@ -379,54 +383,42 @@ func (d *DeviceScraper) processData(ctx context.Context, data any, store *metric
 		return
 	}
 
-	infoLabels := map[string]string{
-		"name": d.Name,
-		"ip":   d.IP,
-	}
-	for _, key := range d.DynamicKeys {
-		infoLabels[key] = d.CustomLabels[key]
-	}
-
-	standardLabels := map[string]string{
-		"name": d.Name,
-		"ip":   d.IP,
-	}
+	deviceLabels := d.baseLabels()
 
 	family := utils.DetectDeviceFamily(root)
 
 	buf := metrics.NewBuffer()
-	buf.UpdateMetric("device_info", infoLabels, 1.0)
+	buf.UpdateMetric("device_info", deviceLabels, 1.0)
 
 	if collector.IsCollectorEnabled(d.EnabledModules, "system") {
 		collector.RunCollectorTimed("system", func() {
-			collector.ProcessSystem(ctx, root, standardLabels, buf)
+			collector.ProcessSystem(ctx, root, deviceLabels, buf)
 		})
 	}
 
 	if collector.IsCollectorEnabled(d.EnabledModules, "interfaces") {
 		collector.RunCollectorTimed("interfaces", func() {
-			collector.ProcessInterfaces(ctx, root, standardLabels, buf)
+			collector.ProcessInterfaces(ctx, root, deviceLabels, buf)
 		})
 	}
 
 	if collector.IsCollectorEnabled(d.EnabledModules, "peers") {
 		collector.RunCollectorTimed("peers", func() {
-			collector.ProcessPeers(ctx, root, standardLabels, buf)
+			collector.ProcessPeers(ctx, root, deviceLabels, buf)
 		})
 	}
 
-	switch family {
-	case "airfiber":
+	if collector.IsCollectorEnabled(d.EnabledModules, "wireless") {
+		collector.ProcessWireless(ctx, root, deviceLabels, d.EnabledModules, buf)
+	} else {
+		logger.DebugContext(ctx, d.Name, "Wireless module disabled")
+	}
+
+	if family == "airfiber" {
 		if collector.IsCollectorEnabled(d.EnabledModules, "airfiber") {
-			collector.ProcessAF5XHD(ctx, root, standardLabels, d.EnabledModules, buf)
+			collector.ProcessAF5XHD(ctx, root, deviceLabels, d.EnabledModules, buf)
 		} else {
 			logger.DebugContext(ctx, d.Name, "AirFiber detected but module disabled")
-		}
-	default:
-		if collector.IsCollectorEnabled(d.EnabledModules, "wireless") {
-			collector.ProcessWireless(ctx, root, standardLabels, d.EnabledModules, buf)
-		} else {
-			logger.DebugContext(ctx, d.Name, "AirMax detected but wireless module disabled")
 		}
 	}
 
@@ -434,7 +426,7 @@ func (d *DeviceScraper) processData(ctx context.Context, data any, store *metric
 	buf.Commit(store, d.Name, d.IP)
 
 	if dryRun {
-		logger.InfoContext(ctx, d.Name, "Data processed OK (%s). Labels: %v", family, infoLabels)
+		logger.InfoContext(ctx, d.Name, "Data processed OK (%s). Labels: %v", family, deviceLabels)
 	} else {
 		logger.DebugContext(ctx, d.Name, "Collection OK (%s): %d metrics committed", family, totalMetrics)
 	}
@@ -451,4 +443,86 @@ func BuildScrapers(inv *config.InventoryConfig, sys *config.SystemConfig, dynami
 		scrapers = append(scrapers, sc)
 	}
 	return scrapers
+}
+
+// NewOfflineScraper constructs a DeviceScraper for offline JSON fixture replay without network I/O.
+func NewOfflineScraper(name, ip string, customLabels map[string]string, dynamicKeys []string) *DeviceScraper {
+	if name == "" {
+		name = "offline-fixture"
+	}
+	if ip == "" {
+		ip = "127.0.0.1"
+	}
+	labelsCopy := make(map[string]string, len(customLabels))
+	for k, v := range customLabels {
+		labelsCopy[k] = v
+	}
+	return &DeviceScraper{
+		Name:         name,
+		IP:           ip,
+		CustomLabels: labelsCopy,
+		DynamicKeys:  dynamicKeys,
+		EnabledModules: map[string]bool{
+			"system":     true,
+			"interfaces": true,
+			"wireless":   true,
+			"peers":      true,
+			"airfiber":   true,
+		},
+	}
+}
+
+// ScrapeBytes decodes raw statistics JSON bytes and executes all enabled collectors without network requests.
+func (d *DeviceScraper) ScrapeBytes(ctx context.Context, rawJSON []byte, store *metrics.Store, dryRun bool) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	metaLabels := d.baseLabels()
+	startTime := time.Now()
+
+	data, err := decodeJSONSafe(rawJSON)
+	if err != nil {
+		logger.ErrorContext(ctx, d.Name, "JSON decode error: %v", err)
+		store.IncrementMetric("scrape_error", d.errorLabels("decode_error"), 1.0)
+		store.UpdateMetric("scrape_success", metaLabels, 0.0)
+		metrics.GetTelemetry().RecordScrapeResult("decode_error")
+		return err
+	}
+
+	var root map[string]any
+	switch v := data.(type) {
+	case []any:
+		if len(v) > 0 {
+			root, _ = v[0].(map[string]any)
+		}
+	case map[string]any:
+		root = v
+	}
+	if root == nil {
+		errEmpty := errors.New("JSON payload does not contain a valid statistics object")
+		logger.ErrorContext(ctx, d.Name, "Invalid fixture payload: %v", errEmpty)
+		store.IncrementMetric("scrape_error", d.errorLabels("decode_error"), 1.0)
+		store.UpdateMetric("scrape_success", metaLabels, 0.0)
+		metrics.GetTelemetry().RecordScrapeResult("decode_error")
+		return errEmpty
+	}
+
+	d.processData(ctx, data, store, dryRun)
+	duration := time.Since(startTime).Seconds()
+	store.ScrapeDuration.WithLabelValues(d.Name, d.IP).Observe(duration)
+	store.UpdateMetric("scrape_success", metaLabels, 1.0)
+	metrics.GetTelemetry().RecordScrapeResult("success")
+	return nil
+}
+
+// ScrapeFile reads a statistics JSON fixture from disk and processes it through all enabled collectors.
+func (d *DeviceScraper) ScrapeFile(ctx context.Context, filePath string, store *metrics.Store, dryRun bool) error {
+	// #nosec G304 -- filePath is explicitly supplied by the user via CLI flag or test fixture
+	rawJSON, err := os.ReadFile(filePath)
+	if err != nil {
+		metaLabels := d.baseLabels()
+		store.UpdateMetric("scrape_success", metaLabels, 0.0)
+		return fmt.Errorf("reading fixture %s: %w", filePath, err)
+	}
+	return d.ScrapeBytes(ctx, rawJSON, store, dryRun)
 }

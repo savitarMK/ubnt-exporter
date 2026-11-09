@@ -45,7 +45,7 @@ func TestProcessInterfaces(t *testing.T) {
 
 func TestProcessInterfaces_AirMaxAC_ClassificationAndPhysicalState(t *testing.T) {
 	sink := newMockMetricSink()
-	apLabels := map[string]string{"name": "ap-ac-sector", "ip": "10.0.4.155"}
+	apLabels := map[string]string{"name": "AP1", "ip": "192.168.1.10"}
 
 	data := map[string]any{
 		"interfaces": []any{

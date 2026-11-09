@@ -129,20 +129,15 @@ func TestProcessAF5XHD(t *testing.T) {
 		"interfaces": false,
 	}
 
+	collector.ProcessWireless(context.Background(), data, apLabels, collectorsConf, sink)
 	collector.ProcessAF5XHD(context.Background(), data, apLabels, collectorsConf, sink)
 	collector.ProcessPeers(context.Background(), data, apLabels, sink)
 
-	if sink.metrics["af_service_uptime"] != 86400.0 {
-		t.Errorf("expected af_service_uptime 86400.0, got %v", sink.metrics["af_service_uptime"])
+	if sink.metrics["ap_service_uptime"] != 86400.0 {
+		t.Errorf("expected ap_service_uptime 86400.0, got %v", sink.metrics["ap_service_uptime"])
 	}
-	if sink.metrics["af_link_state"] != 1.0 {
-		t.Errorf("expected af_link_state 1.0, got %v", sink.metrics["af_link_state"])
-	}
-	if sink.metrics["af_temperature"] != 48.0 {
-		t.Errorf("expected af_temperature 48.0, got %v", sink.metrics["af_temperature"])
-	}
-	if sink.metrics["af_gps_sats"] != 11.0 {
-		t.Errorf("expected af_gps_sats 11.0, got %v", sink.metrics["af_gps_sats"])
+	if sink.metrics["ap_link_state"] != 1.0 {
+		t.Errorf("expected ap_link_state 1.0, got %v", sink.metrics["ap_link_state"])
 	}
 	if sink.metrics["af_gps_sync_state"] != 1.0 {
 		t.Errorf("expected af_gps_sync_state 1.0, got %v", sink.metrics["af_gps_sync_state"])
@@ -168,17 +163,23 @@ func TestProcessAF5XHD(t *testing.T) {
 	if sink.metrics["af_local_autopower"] != 1.0 {
 		t.Errorf("expected af_local_autopower 1.0, got %v", sink.metrics["af_local_autopower"])
 	}
+	if sink.metrics["af_dl_ratio"] != 67.0 {
+		t.Errorf("expected af_dl_ratio 67.0, got %v", sink.metrics["af_dl_ratio"])
+	}
+	if sink.metrics["af_rx_efficiency"] != 99.5 {
+		t.Errorf("expected af_rx_efficiency 99.5, got %v", sink.metrics["af_rx_efficiency"])
+	}
 	if sink.metrics["ap_clients"] != 1.0 {
 		t.Errorf("expected ap_clients 1.0, got %v", sink.metrics["ap_clients"])
 	}
-	if sink.metrics["af_dfs_status"] != 0.0 {
-		t.Errorf("expected af_dfs_status 0.0, got %v", sink.metrics["af_dfs_status"])
+	if sink.metrics["ap_dfs_status"] != 0.0 {
+		t.Errorf("expected ap_dfs_status 0.0, got %v", sink.metrics["ap_dfs_status"])
 	}
 	if sink.metrics["af_remote_gps_sync_state"] != 0.0 {
 		t.Errorf("expected af_remote_gps_sync_state 0.0, got %v", sink.metrics["af_remote_gps_sync_state"])
 	}
-	if sink.metrics["af_remote_ideal_signal"] != -48.0 {
-		t.Errorf("expected af_remote_ideal_signal -48.0, got %v", sink.metrics["af_remote_ideal_signal"])
+	if sink.metrics["peer_remote_ideal_signal"] != -48.0 {
+		t.Errorf("expected peer_remote_ideal_signal -48.0, got %v", sink.metrics["peer_remote_ideal_signal"])
 	}
 	if sink.metrics["peer_remote_signal"] != -55.0 {
 		t.Errorf("expected peer_remote_signal -55.0, got %v", sink.metrics["peer_remote_signal"])
@@ -188,18 +189,6 @@ func TestProcessAF5XHD(t *testing.T) {
 	}
 	if sink.metrics["peer_remote_imbalance"] != 1.0 {
 		t.Errorf("expected peer_remote_imbalance 1.0, got %v", sink.metrics["peer_remote_imbalance"])
-	}
-	if sink.metrics["af_ideal_signal"] != -48.0 {
-		t.Errorf("expected af_ideal_signal -48.0, got %v", sink.metrics["af_ideal_signal"])
-	}
-	if sink.metrics["af_signal_delta_ideal"] != -7.0 {
-		t.Errorf("expected af_signal_delta_ideal -7.0, got %v", sink.metrics["af_signal_delta_ideal"])
-	}
-	if sink.metrics["af_capacity_combined"] != 588800000.0 {
-		t.Errorf("expected af_capacity_combined 588800000.0, got %v", sink.metrics["af_capacity_combined"])
-	}
-	if sink.metrics["af_capacity_combined_ideal"] != 588800000.0 {
-		t.Errorf("expected af_capacity_combined_ideal 588800000.0, got %v", sink.metrics["af_capacity_combined_ideal"])
 	}
 	if math.Abs(sink.metrics["peer_capacity_dl"]-294.4) > 1e-4 {
 		t.Errorf("expected peer_capacity_dl 294.4, got %v", sink.metrics["peer_capacity_dl"])
@@ -225,17 +214,17 @@ func TestProcessAF5XHD(t *testing.T) {
 	if sink.metrics["peer_signal_delta_ideal"] != -7.0 {
 		t.Errorf("expected peer_signal_delta_ideal -7.0, got %v", sink.metrics["peer_signal_delta_ideal"])
 	}
-	if sink.metrics["af_link_score"] != 97.0 {
-		t.Errorf("expected af_link_score 97.0, got %v", sink.metrics["af_link_score"])
+	if sink.metrics["peer_link_score_dl"] != 96.0 {
+		t.Errorf("expected peer_link_score_dl 96.0, got %v", sink.metrics["peer_link_score_dl"])
 	}
-	if sink.metrics["af_modulation_rate"] != 12.0 {
-		t.Errorf("expected af_modulation_rate 12.0, got %v", sink.metrics["af_modulation_rate"])
+	if sink.metrics["peer_link_score_ul"] != 98.0 {
+		t.Errorf("expected peer_link_score_ul 98.0, got %v", sink.metrics["peer_link_score_ul"])
 	}
 }
 
 func TestProcessAF5XHD_RealPayload_v155(t *testing.T) {
 	sink := newMockMetricSink()
-	apLabels := map[string]string{"name": "AP BH Altepexi Master", "ip": "10.1.1.158"}
+	apLabels := map[string]string{"name": "AF5XHD-MASTER-01", "ip": "192.168.1.20"}
 
 	data := map[string]any{
 		"device": map[string]any{
@@ -258,8 +247,8 @@ func TestProcessAF5XHD_RealPayload_v155(t *testing.T) {
 				"alt":             1315.0,
 				"dim":             3.0,
 				"dop":             0.81,
-				"lat":             18.420944,
-				"lon":             -97.283978,
+				"lat":             37.774900,
+				"lon":             -122.419400,
 				"sats":            15.0,
 				"timeSyncEnabled": false,
 			},
@@ -297,8 +286,8 @@ func TestProcessAF5XHD_RealPayload_v155(t *testing.T) {
 			"peers": []any{
 				map[string]any{
 					"common": map[string]any{
-						"hostname":      "Station BH Altepexi Slave",
-						"mgmtIp":        "10.1.1.159",
+						"hostname":      "AF5XHD-SLAVE-01",
+						"mgmtIp":        "192.168.1.21",
 						"distance":      20229.0,
 						"uptime":        808222.0,
 						"powerTime":     808253.0,
@@ -307,7 +296,7 @@ func TestProcessAF5XHD_RealPayload_v155(t *testing.T) {
 						"connected":     true,
 						"active":        true,
 						"identification": map[string]any{
-							"mac":             "78:45:58:78:15:3C",
+							"mac":             "00:11:22:78:15:3C",
 							"product":         "airFiber 5XHD",
 							"model":           "airFiber 5XHD",
 							"family":          "ltu",
@@ -368,8 +357,8 @@ func TestProcessAF5XHD_RealPayload_v155(t *testing.T) {
 								"alt":             2108.0,
 								"dim":             3.0,
 								"dop":             1.12,
-								"lat":             18.569470,
-								"lon":             -97.380910,
+								"lat":             37.804400,
+								"lon":             -122.271200,
 								"sats":            9.0,
 								"timeSyncEnabled": false,
 							},
@@ -402,15 +391,16 @@ func TestProcessAF5XHD_RealPayload_v155(t *testing.T) {
 
 	collector.ProcessSystem(context.Background(), data, apLabels, sink)
 	collector.ProcessInterfaces(context.Background(), data, apLabels, sink)
+	collector.ProcessWireless(context.Background(), data, apLabels, nil, sink)
 	collector.ProcessAF5XHD(context.Background(), data, apLabels, nil, sink)
 	collector.ProcessPeers(context.Background(), data, apLabels, sink)
 
 	// 1. Remote outputPower read from remote[0].linkQuality.outputPower
-	if sink.metrics["af_remote_conducted"] != 24.0 {
-		t.Errorf("expected af_remote_conducted 24.0, got %v", sink.metrics["af_remote_conducted"])
+	if sink.metrics["peer_remote_power"] != 24.0 {
+		t.Errorf("expected peer_remote_power 24.0, got %v", sink.metrics["peer_remote_power"])
 	}
-	if sink.metrics["af_remote_eirp"] != 54.0 {
-		t.Errorf("expected af_remote_eirp 54.0, got %v", sink.metrics["af_remote_eirp"])
+	if sink.metrics["peer_remote_eirp"] != 54.0 {
+		t.Errorf("expected peer_remote_eirp 54.0, got %v", sink.metrics["peer_remote_eirp"])
 	}
 	if sink.metrics["af_remote_autopower"] != 0.0 {
 		t.Errorf("expected af_remote_autopower 0.0, got %v", sink.metrics["af_remote_autopower"])
@@ -557,18 +547,17 @@ func TestProcessAF5XHD_EdgeCases(t *testing.T) {
 		},
 	}
 
+	collector.ProcessWireless(ctx, data, apLabels, enabled, sink)
 	collector.ProcessAF5XHD(ctx, data, apLabels, enabled, sink)
+	collector.ProcessPeers(ctx, data, apLabels, sink)
 
-	if sink.metrics["af_link_state"] != 0.0 {
-		t.Errorf("expected af_link_state 0.0 for disconnected, got %v", sink.metrics["af_link_state"])
+	if sink.metrics["ap_link_state"] != 0.0 {
+		t.Errorf("expected ap_link_state 0.0 for disconnected, got %v", sink.metrics["ap_link_state"])
 	}
-	if sink.metrics["ap_frequency"] != 5215.0 {
-		t.Errorf("expected ap_frequency 5215.0 from rx fallback, got %v", sink.metrics["ap_frequency"])
+	if sink.metrics["af_frequency_rx"] != 5215.0 {
+		t.Errorf("expected af_frequency_rx 5215.0, got %v", sink.metrics["af_frequency_rx"])
 	}
-	if sink.metrics["af_link_score"] != 85.0 {
-		t.Errorf("expected af_link_score 85.0 from average, got %v", sink.metrics["af_link_score"])
-	}
-	if sink.metrics["af_remote_conducted"] != 19.0 {
-		t.Errorf("expected af_remote_conducted 19.0 from linkQuality, got %v", sink.metrics["af_remote_conducted"])
+	if sink.metrics["af_remote_autopower"] != 1.0 {
+		t.Errorf("expected af_remote_autopower 1.0 from linkQuality, got %v", sink.metrics["af_remote_autopower"])
 	}
 }

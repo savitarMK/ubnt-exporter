@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"ubnt-exporter/internal/config"
 	"ubnt-exporter/internal/logger"
 	"ubnt-exporter/internal/metrics"
@@ -396,5 +398,103 @@ func TestDeviceScraper_Scrape_Errors(t *testing.T) {
 	// 10. BuildScrapers with nil inventory returns nil
 	if scrapers := scraper.BuildScrapers(nil, sys, nil); scrapers != nil {
 		t.Errorf("expected BuildScrapers(nil) to return nil")
+	}
+}
+
+func TestOfflineScraper_FixtureReplay(t *testing.T) {
+	store := metrics.NewStore()
+	store.RegisterDynamicLabels([]string{"sector"})
+
+	sc := scraper.NewOfflineScraper("AC-PTMP-FIXTURE", "192.168.1.10", map[string]string{"sector": "norte"}, []string{"sector"})
+	if sc.Name != "AC-PTMP-FIXTURE" || sc.IP != "192.168.1.10" {
+		t.Fatalf("unexpected offline scraper identity: %s (%s)", sc.Name, sc.IP)
+	}
+
+	// Default fallback name and IP
+	scDefault := scraper.NewOfflineScraper("", "", nil, nil)
+	if scDefault.Name != "offline-fixture" || scDefault.IP != "127.0.0.1" {
+		t.Errorf("expected default offline scraper name/IP, got %q / %q", scDefault.Name, scDefault.IP)
+	}
+
+	ctx := context.Background()
+	fixturePath := "../../testdata/fixtures/airmax_ac_ptmp.json"
+	if err := sc.ScrapeFile(ctx, fixturePath, store, true); err != nil {
+		t.Fatalf("expected ScrapeFile on airmax_ac_ptmp.json to succeed, got: %v", err)
+	}
+
+	// Verify real fixture metrics were extracted accurately
+	if cpu, ok := store.GetDeviceMetric("AC-PTMP-FIXTURE", "192.168.1.10", "cpu_usage"); !ok || cpu != 12.0 {
+		t.Errorf("expected cpu_usage=12.0 from fixture, got %v (ok=%v)", cpu, ok)
+	}
+	if sig, ok := store.GetDeviceMetric("AC-PTMP-FIXTURE", "192.168.1.10", "ap_signal"); !ok || sig != -47.0 {
+		t.Errorf("expected ap_signal=-47.0 from fixture, got %v (ok=%v)", sig, ok)
+	}
+	if snr, ok := store.GetDeviceMetric("AC-PTMP-FIXTURE", "192.168.1.10", "ap_snr"); !ok || snr != 43.0 {
+		t.Errorf("expected ap_snr=43.0 from fixture, got %v (ok=%v)", snr, ok)
+	}
+	if clients, ok := store.GetDeviceMetric("AC-PTMP-FIXTURE", "192.168.1.10", "ap_clients"); !ok || clients != 1.0 {
+		t.Errorf("expected ap_clients=1.0 from fixture, got %v (ok=%v)", clients, ok)
+	}
+
+	// Verify AirFiber 5XHD PtP fixture replayed through unified pipeline (no duplicated metrics)
+	scAF := scraper.NewOfflineScraper("AF5XHD-PTP-FIXTURE", "192.168.1.20", map[string]string{"sector": "troncal"}, []string{"sector"})
+	afFixturePath := "../../testdata/fixtures/af5xhd_ptp.json"
+	if err := scAF.ScrapeFile(ctx, afFixturePath, store, true); err != nil {
+		t.Fatalf("expected ScrapeFile on af5xhd_ptp.json to succeed, got: %v", err)
+	}
+	if freqTx, ok := store.GetDeviceMetric("AF5XHD-PTP-FIXTURE", "192.168.1.20", "af_frequency_tx"); !ok || freqTx != 5995.0 {
+		t.Errorf("expected af_frequency_tx=5995.0 from AF5XHD fixture, got %v (ok=%v)", freqTx, ok)
+	}
+	if freqRx, ok := store.GetDeviceMetric("AF5XHD-PTP-FIXTURE", "192.168.1.20", "af_frequency_rx"); !ok || freqRx != 6065.0 {
+		t.Errorf("expected af_frequency_rx=6065.0 from AF5XHD fixture, got %v (ok=%v)", freqRx, ok)
+	}
+	if snr, ok := store.GetDeviceMetric("AF5XHD-PTP-FIXTURE", "192.168.1.20", "ap_snr"); !ok || snr != 47.0 {
+		t.Errorf("expected ap_snr=47.0 from AF5XHD fixture, got %v (ok=%v)", snr, ok)
+	}
+	if dlRatio, ok := store.GetDeviceMetric("AF5XHD-PTP-FIXTURE", "192.168.1.20", "af_dl_ratio"); !ok || dlRatio != 50.0 {
+		t.Errorf("expected af_dl_ratio=50.0 from AF5XHD fixture, got %v (ok=%v)", dlRatio, ok)
+	}
+
+	// Verify custom dynamic labels ("sector") are propagated across all metric families (AP, Peer, Interface, Scrape)
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(metrics.NewUbiquitiCollector(store))
+	mfs, err := reg.Gather()
+	if err != nil {
+		t.Fatalf("failed to gather metrics from store: %v", err)
+	}
+	checkedFamilies := map[string]bool{
+		"ubnt_ap_signal_dbm":        false,
+		"ubnt_peer_signal_dbm":      false,
+		"ubnt_iface_rx_bytes_total": false,
+		"ubnt_scrape_success":       false,
+	}
+	for _, mf := range mfs {
+		name := mf.GetName()
+		if _, watch := checkedFamilies[name]; !watch {
+			continue
+		}
+		for _, m := range mf.GetMetric() {
+			for _, lp := range m.GetLabel() {
+				if lp.GetName() == "sector" && (lp.GetValue() == "norte" || lp.GetValue() == "troncal") {
+					checkedFamilies[name] = true
+				}
+			}
+		}
+	}
+	for fam, found := range checkedFamilies {
+		if !found {
+			t.Errorf("expected custom label 'sector' to be present on metric family %s", fam)
+		}
+	}
+
+	// Error cases: nonexistent file, malformed JSON, empty array
+	if err := sc.ScrapeFile(ctx, "/nonexistent/fixture.json", store, false); err == nil {
+		t.Errorf("expected error for nonexistent fixture file")
+	}
+	if err := sc.ScrapeBytes(ctx, []byte("invalid-json"), store, false); err == nil {
+		t.Errorf("expected error for malformed JSON bytes")
+	}
+	if err := sc.ScrapeBytes(ctx, []byte("[]"), store, false); err == nil {
+		t.Errorf("expected error for empty JSON array")
 	}
 }

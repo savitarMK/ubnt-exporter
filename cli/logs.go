@@ -124,7 +124,7 @@ func CmdLogs(systemPath string, sysConf *config.SystemConfig, subcommand string,
 	case "tail":
 		return cmdLogsTail(sysConf, limit, filter)
 	default:
-		// Allow `ubnt-exporter logs MST4` as shorthand filter for tail
+		// Allow `ubnt-exporter logs AP1` as shorthand filter for tail
 		if filter == "" {
 			filter = subcommand
 		}
@@ -164,7 +164,7 @@ func cmdLogsTest(sysConf *config.SystemConfig) int {
 
 	l := logger.Get()
 	ctx := logger.WithTraceID(context.Background(), "diag-trace-01")
-	sampleDevice := "MST4"
+	sampleDevice := "AP1"
 	sampleMsg := "Collection OK (airmax): 513 metrics committed"
 
 	formats := []struct {

@@ -112,7 +112,6 @@ func ProcessSystem(ctx context.Context, dataRoot map[string]any, apLabels map[st
 	}
 
 	if pt, hasPt := deviceData["powerTime"]; hasPt && pt != nil {
-		store.UpdateMetric("af_power_time", labels, utils.SafeFloat(pt))
 		store.UpdateMetric("device_power_time", labels, utils.SafeFloat(pt))
 	}
 

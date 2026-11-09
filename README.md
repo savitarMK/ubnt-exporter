@@ -1,6 +1,6 @@
 # ubnt-exporter
 
-[![Release](https://img.shields.io/badge/version-v1.1.2-blue.svg)](VERSION)
+[![Release](https://img.shields.io/badge/version-v1.2.0-blue.svg)](VERSION)
 [![Go Version](https://img.shields.io/badge/go-1.27.3-00ADD8.svg)](go.mod)
 [![Docker Image](https://img.shields.io/badge/docker-debian%3A13.7--slim-2496ED.svg)](Dockerfile)
 [![Prometheus](https://img.shields.io/badge/prometheus-3.15%20ready-E6522C.svg)](https://prometheus.io)
@@ -31,9 +31,12 @@ The `ubnt-exporter` gathers operational telemetry and radio metrics from Ubiquit
 - **AirOS REST Session Persistence:** Authenticates via `/api/v1.0/user/login`, reuses session tokens across cycles, and recovers transparently from expired sessions.
 - **Zero-Contention Metric Storage:** Thread-safe buffered data structures ensure non-blocking writes during high-frequency scrape cycles.
 - **OpenMetrics 2.0 & Prometheus 3.15 Ready:** Full content negotiation, Unix Domain Socket (`unix:///path.sock`) scraping, and standard `ubnt_build_info` telemetry.
+- **Universal Dynamic Label Propagation (Grafana Ready):** Arbitrary custom labels configured in `defaults.labels` and `devices[].labels` (e.g., `region`, `network`, `tower`, `sector`, `pop`, `area`, `role`) are automatically discovered and injected across **all 159 exported metrics** (System, Radio, AirFiber, Interfaces, Peers, and Scrape Status), enabling direct Grafana template variable filtering and grouping without complex PromQL `group_left` joins.
+- **Unified Non-Duplicated Collector Pipeline:** Executes `system`, `interfaces`, `wireless`, and `peers` across all Ubiquiti families while keeping `airfiber` exclusively for split-frequency TDD backhaul metrics, eliminating redundant `ubnt_af_*` series.
+- **Offline Fixture Replay & Development Engine (`-f` / `--from-file`):** Develop, inspect, and test new collector features against real captured AirMAX AC PtMP ([`testdata/fixtures/airmax_ac_ptmp.json`](testdata/fixtures/airmax_ac_ptmp.json)) and AirFiber 5XHD PtP ([`testdata/fixtures/af5xhd_ptp.json`](testdata/fixtures/af5xhd_ptp.json)) JSON payloads without requiring live hardware connectivity or configuration files.
 - **Integrated Exporter Self-Telemetry:** Native OpenMetrics self-observability exposing module latency histograms (`ubnt_exporter_collector_duration_seconds`), execution counters, fleet availability ratios, and Go runtime stats (`go_*`, `process_*`).
 - **Production-Ready Alertmanager 0.34+ Stack:** Turnkey alert rules ([`examples/alerts.yaml.example`](examples/alerts.yaml.example)) and Alertmanager routing templates ([`examples/alertmanager.yaml.example`](examples/alertmanager.yaml.example)) featuring hierarchical inhibition (AP/CPE storm suppression), Slack message editing for RF link flapping, and Telegram HTML delivery.
-- **Dynamic Configuration Reloading:** Listens for `SIGHUP` signals to reload logging levels and runtime configuration on the fly.
+- **Dynamic Configuration Reloading:** Listens for `SIGHUP` signals (`ubnt-exporter reload`) to reload logging levels, inventory targets, and dynamic Prometheus labels on the fly while purging stale label series.
 - **Comprehensive SIEM & Cloud-Native Logging:** Native support for structured JSON lines (Kubernetes, Loki, Elastic), ArcSight CEF, IETF Syslog (RFC 5424), BSD Syslog, and formatted text output.
 - **Asynchronous Request Tracing & Context Correlation:** Correlates log entries across concurrent daemon cycles (`cycle-N`) and on-demand `/probe` targets with `X-Request-ID` propagation across all logging formats.
 - **Anti-Storm Log Dampening:** Built-in throttling mechanism silences repetitive identical error floods during network outages while emitting periodic summary counts and auto-resetting upon device recovery.
@@ -158,7 +161,7 @@ defaults:
 
 devices:
   - name: "AP-SECTOR-01"
-    ip: "10.0.0.1"
+    ip: "192.168.1.10"
     labels:
       tower: "tower-north"
       sector: "alpha"
@@ -234,8 +237,9 @@ Flags can be specified in any order (before or after the command):
 | `--cfg-dir <path>` | — | — | Directory containing both `config.yaml` and `system.yaml`. |
 | `--target <pattern>` | `-t` | — | Filter target device by name, IP, custom label, or RE2 regex. |
 | `--regex <pattern>` | `-r` | — | Filter metrics or log lines using semantic presets or RE2 patterns. |
+| `--from-file <path>` | `-f` | — | Replay an offline JSON statistics fixture (`--fixture`) without live network I/O. |
 | `--lines <int>` | `-n` | `50` | Number of historical log lines to display in `logs tail`. |
-| `--version` | `-v` | — | Print exporter version (`1.1.2`) and exit. |
+| `--version` | `-v` | — | Print exporter version (`1.2.0`) and exit. |
 | `--log` | `-log` | — | Display the logging reference manual and exit. |
 | `--help` | `-h` | — | Show contextual help for the application or any subcommand. |
 
@@ -248,13 +252,13 @@ Flags can be specified in any order (before or after the command):
 | `check` | Validates YAML syntax, Prometheus label schemas, collector names, and timeouts. | Offline (none) |
 | `show` | Dumps merged in-memory configuration with masked passwords and tokens. | Offline (none) |
 | `reload` | Validates configuration files and sends `SIGHUP` to the active daemon process. | Local IPC (`SIGHUP`) |
-| `test` (or `selftest`) | Runs 4 built-in verification suites (`metrics`, `collectors`, `connectivity`, `endpoint`). | Local & network |
-| `query` (or `q`) | Queries live metrics using semantic presets or RE2 regular expressions. | Active network |
-| `metrics` | Searches the 205 Prometheus metric definitions by name, label, or description. | Offline (none) |
+| `test` (or `selftest`) | Runs 4 built-in verification suites (`metrics`, `collectors`, `connectivity`, `endpoint`). | Local, network, or `-f` |
+| `query` (or `q`) | Queries telemetry using semantic presets or RE2 regular expressions. | Network or `-f` fixture |
+| `metrics` | Searches the 159 Prometheus metric definitions by name, label, or description. | Offline (none) |
 | `logs` | Tails live daemon logs from the in-memory ring buffer or tests formatters. | Local loopback `/logs` |
-| `diag` | Formats an ASCII link quality table (Signal, Noise, SNR, Chain Delta, Capacity). | Active network |
-| `inspect` | Performs a deep telemetry scrape of a device grouped into 4 functional domains. | Active network |
-| `export` | Performs a one-shot dry-run scrape and prints Prometheus exposition output. | Active network |
+| `diag` | Formats an ASCII link quality table (Signal, Noise, SNR, Chain Delta, Capacity). | Network or `-f` fixture |
+| `inspect` | Performs a deep telemetry scrape of a device grouped into 4 functional domains. | Network or `-f` fixture |
+| `export` | Performs a one-shot dry-run scrape and prints Prometheus exposition output. | Network or `-f` fixture |
 
 ### Real-World CLI Examples
 
@@ -273,14 +277,14 @@ docker exec ubnt-exporter ubnt-exporter reload
 
 # 5. Execute all 4 self-test suites (metrics dictionary, collectors, TLS connectivity, endpoint)
 docker exec ubnt-exporter ubnt-exporter test
-docker exec ubnt-exporter ubnt-exporter test connectivity -t MST4
+docker exec ubnt-exporter ubnt-exporter test connectivity -t AP1
 
 # 6. Query live metrics using semantic presets (signal, cpu, clients, rf, traffic, gps, errors)
-docker exec ubnt-exporter ubnt-exporter query signal -t MST4
-docker exec ubnt-exporter ubnt-exporter query cpu -t "^MST.*"
+docker exec ubnt-exporter ubnt-exporter query signal -t AP1
+docker exec ubnt-exporter ubnt-exporter query cpu -t "^AP.*"
 
 # 7. Query live metrics using dynamic RE2 regular expressions
-docker exec ubnt-exporter ubnt-exporter query -r "ubnt_peer_(rx|tx)_bytes|snr" -t MST4
+docker exec ubnt-exporter ubnt-exporter query -r "ubnt_peer_(rx|tx)_bytes|snr" -t AP1
 
 # 8. Search the static Prometheus metric dictionary by RE2 pattern
 docker exec ubnt-exporter ubnt-exporter metrics -r "gps|ntp|vlan"
@@ -291,45 +295,54 @@ docker exec ubnt-exporter ubnt-exporter logs status
 docker exec ubnt-exporter ubnt-exporter logs test
 
 # 10. Audit RF link quality, SNR, and chain imbalance (>5 dB warnings highlighted)
-docker exec ubnt-exporter ubnt-exporter diag -t "^MST.*"
+docker exec ubnt-exporter ubnt-exporter diag -t "^AP.*"
 
 # 11. Deep collector-by-collector inspection grouped by subsystem
-docker exec ubnt-exporter ubnt-exporter inspect -t MST4 -r "ath0\.99"
+docker exec ubnt-exporter ubnt-exporter inspect -t AP1 -r "ath0\.99"
 
 # 12. Dry-run one-shot export to stdout for verification or debugging
-docker exec ubnt-exporter ubnt-exporter export -t MST4
+docker exec ubnt-exporter ubnt-exporter export -t AP1
+
+# 13. Offline development & inspection using real captured device JSON fixtures (no live radio required)
+ubnt-exporter diag -f testdata/fixtures/airmax_ac_ptmp.json
+ubnt-exporter inspect -f testdata/fixtures/af5xhd_ptp.json -r "af_|peer_"
+ubnt-exporter export -f testdata/fixtures/airmax_ac_ptmp.json -c examples/config.yaml.example -t AP-SECTOR-01
 ```
 
 ---
 
-## Unit Testing & Verification
+## Unit Testing, Offline Fixtures & Verification
 
-The project maintains a dedicated top-level test suite located in the [`test/`](test/) directory. Tests are strictly categorized into domain-specific subdirectories, with descriptive filenames that reflect their operational purpose:
+The project maintains a dedicated top-level test suite located in the [`test/`](test/) directory alongside sanitized real-hardware JSON fixtures in [`testdata/fixtures/`](testdata/fixtures/):
 
 ```text
+testdata/
+└── fixtures/
+    ├── af5xhd_ptp.json              # Sanitized real AirFiber 5XHD (LTU) PtP backhaul capture
+    └── airmax_ac_ptmp.json          # Sanitized real AirMAX AC (AirOS v8) PtMP sector capture
 test/
 ├── cmd/
-│   └── cli_test.go                  # Command-line flags, configuration check/show, and CLI subcommands
+│   └── cli_test.go                  # Command-line flags, configuration check/show, offline replay, and CLI subcommands
 ├── collector/
-│   ├── airfiber_collector_test.go   # AirFiber 5XHD radio, capacity, and delta metrics processing
-│   ├── interfaces_collector_test.go # Ethernet interface counters, bridge ports, and duplex speeds
+│   ├── airfiber_collector_test.go   # AirFiber 5XHD exclusive split-frequency, duty cycle, and TDD sync processing
+│   ├── interfaces_collector_test.go # Ethernet interface counters, bridge ports, VLANs, and duplex speeds
 │   ├── mock_sink_test.go            # Thread-safe mock metric sink for isolated collector unit testing
 │   ├── peers_collector_test.go      # Connected station metrics, CPE chain balance, and signal levels
-│   ├── system_collector_test.go     # Host telemetry, CPU, RAM, and uptime collector testing
+│   ├── system_collector_test.go     # Host telemetry, CPU, RAM, GPS, NTP, and uptime collector testing
 │   ├── timed_runner_test.go         # Timed execution wrapper, telemetry tracking, and panic recovery
-│   └── wireless_collector_test.go   # AirMAX wireless parameters, frequency, and channel width
+│   └── wireless_collector_test.go   # AirMAX/LTU wireless parameters, frequency, SNR fallback, and channel width
 ├── config/
 │   ├── config_loader_test.go        # Dual-file loading, default values, directory overrides, and secrets
 │   └── config_validator_test.go     # IP validation, label discovery, address parsing, and error checks
 ├── definitions/
-│   └── definitions_test.go          # Metric dictionary integrity, Prometheus prefixes, and build metadata
+│   └── definitions_test.go          # Metric dictionary integrity (159 definitions), prefixes, and build metadata
 ├── logger/
-│   └── logger_test.go               # Multi-format outputs (CEF, RFC5424, Syslog, Text) and log file rotation
+│   └── logger_test.go               # Multi-format outputs (CEF, RFC5424, Syslog, Text, JSON) and log file rotation
 ├── metrics/
-│   ├── store_test.go                # In-memory metric store, buffered atomic commits, and build info gauge
+│   ├── store_test.go                # In-memory metric store, dynamic label propagation, and build info gauge
 │   └── telemetry_test.go            # Daemon self-observability metrics and collector telemetry recording
 ├── scraper/
-│   └── device_scraper_test.go       # HTTP device scraper, mock AirOS REST server, and scrape error flows
+│   └── device_scraper_test.go       # HTTP device scraper, offline fixture replay, and scrape error flows
 └── utils/
     └── utils_test.go                # Type safety helpers, device family detection, and string utilities
 ```

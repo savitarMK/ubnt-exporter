@@ -208,22 +208,22 @@ func TestProcessPeers(t *testing.T) {
 
 func TestProcessPeers_AirMaxAC_FullPayload(t *testing.T) {
 	sink := newMockMetricSink()
-	apLabels := map[string]string{"name": "ap-ac-sector", "ip": "10.0.4.155"}
+	apLabels := map[string]string{"name": "AP1", "ip": "192.168.1.10"}
 
 	data := map[string]any{
 		"wireless": map[string]any{
 			"peers": []any{
 				map[string]any{
 					"common": map[string]any{
-						"hostname":      "Blanca Flor Fernandez Martinez [Nativitas]",
-						"mgmtIp":        "100.100.106.18",
+						"hostname":      "CPE-CLIENT-01",
+						"mgmtIp":        "192.168.1.101",
 						"uptime":        593292.0,
 						"distance":      900.0,
 						"powerTime":     593291.0,
 						"serviceUptime": 592833.0,
 						"serviceTime":   593181.0,
 						"identification": map[string]any{
-							"mac":             "24:5a:4c:d8:ef:74",
+							"mac":             "00:11:22:33:44:55",
 							"product":         "LiteBeam 5AC",
 							"model":           "LBE-5AC-Gen2",
 							"family":          "airmax-ac",
@@ -292,8 +292,8 @@ func TestProcessPeers_AirMaxAC_FullPayload(t *testing.T) {
 							},
 							"gps": map[string]any{
 								"fix": false,
-								"lat": 18.417010,
-								"lon": -97.303787,
+								"lat": 37.7749,
+								"lon": -122.4194,
 							},
 						},
 					},

@@ -3,7 +3,7 @@ package definitions
 
 var (
 	// VERSION defines the application version, which can be overridden via -ldflags -X.
-	VERSION = "1.1.2"
+	VERSION = "1.2.0"
 	// Revision holds the git commit hash injected during compilation.
 	Revision = "unknown"
 	// Branch holds the git branch name injected during compilation.
@@ -498,66 +498,6 @@ var MetricsDef = map[string]MetricDefinition{
 		Help:   "Airtime Upload %",
 		Labels: []string{"ap_name", "ap_ip", "peer_name", "peer_ip"},
 	},
-	"af_link_score": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_link_score_percent",
-		Help:   "AirFiber Link Score",
-		Labels: []string{"name", "ip"},
-	},
-	"af_link_score_dl": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_link_score_dl_percent",
-		Help:   "Link Score DL %",
-		Labels: []string{"name", "ip"},
-	},
-	"af_link_score_ul": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_link_score_ul_percent",
-		Help:   "Link Score UL %",
-		Labels: []string{"name", "ip"},
-	},
-	"af_capacity_dl": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_capacity_dl_bps",
-		Help:   "Capacity DL (bps)",
-		Labels: []string{"name", "ip"},
-	},
-	"af_capacity_ul": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_capacity_ul_bps",
-		Help:   "Capacity UL (bps)",
-		Labels: []string{"name", "ip"},
-	},
-	"af_capacity_rx": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_capacity_rx_bps",
-		Help:   "AirFiber Capacity RX",
-		Labels: []string{"name", "ip"},
-	},
-	"af_capacity_tx": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_capacity_tx_bps",
-		Help:   "AirFiber Capacity TX",
-		Labels: []string{"name", "ip"},
-	},
-	"af_cinr_dl": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_cinr_dl_db",
-		Help:   "CINR DL (dB)",
-		Labels: []string{"name", "ip"},
-	},
-	"af_cinr_ul": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_cinr_ul_db",
-		Help:   "CINR UL (dB)",
-		Labels: []string{"name", "ip"},
-	},
-	"af_modulation_rate": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_modulation_rate_x",
-		Help:   "Modulation Rate (10x, 8x, etc)",
-		Labels: []string{"name", "ip", "direction"},
-	},
 	"af_gps_sats": {
 		Type:   TypeGauge,
 		Name:   "ubnt_af_gps_satellites",
@@ -570,36 +510,6 @@ var MetricsDef = map[string]MetricDefinition{
 		Help:   "RX Efficiency (Airtime efficiency)",
 		Labels: []string{"name", "ip"},
 	},
-	"af_ideal_signal": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_ideal_signal_dbm",
-		Help:   "Ideal Signal calculated by device",
-		Labels: []string{"name", "ip"},
-	},
-	"af_mcs_index": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_mcs_index",
-		Help:   "MCS Index (0-12)",
-		Labels: []string{"name", "ip", "direction"},
-	},
-	"af_dfs_cac_rem": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_dfs_cac_remaining_seconds",
-		Help:   "DFS CAC Remaining Time",
-		Labels: []string{"name", "ip"},
-	},
-	"af_dfs_status": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_dfs_blocked_status",
-		Help:   "1 if DFS is blocking TX, 0 otherwise",
-		Labels: []string{"name", "ip"},
-	},
-	"af_temperature": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_temperature_celsius",
-		Help:   "Device Temperature",
-		Labels: []string{"name", "ip"},
-	},
 	"af_gps_alt": {
 		Type:   TypeGauge,
 		Name:   "ubnt_af_gps_altitude_meters",
@@ -610,18 +520,6 @@ var MetricsDef = map[string]MetricDefinition{
 		Type:   TypeGauge,
 		Name:   "ubnt_af_duty_cycle_dl_percent",
 		Help:   "Duty Cycle DL Ratio",
-		Labels: []string{"name", "ip"},
-	},
-	"af_remote_rx_eff": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_remote_rx_efficiency_percent",
-		Help:   "Remote Side RX Efficiency",
-		Labels: []string{"name", "ip"},
-	},
-	"af_control_frequency": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_control_frequency_mhz",
-		Help:   "Control Frequency",
 		Labels: []string{"name", "ip"},
 	},
 	"af_frequency_tx": {
@@ -648,132 +546,6 @@ var MetricsDef = map[string]MetricDefinition{
 		Help:   "GPS Sync State (1=Sync, 0=No Sync)",
 		Labels: []string{"name", "ip"},
 	},
-	"af_remote_gain": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_remote_antenna_gain_dbi",
-		Help:   "Remote Peer Antenna Gain",
-		Labels: []string{"name", "ip"},
-	},
-	"af_remote_cable_loss": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_remote_cable_loss_db",
-		Help:   "Remote Peer Cable Loss",
-		Labels: []string{"name", "ip"},
-	},
-	"af_peer_tx_bytes": {
-		Type:   TypeCounter,
-		Name:   "ubnt_af_peer_tx_bytes_total",
-		Help:   "Wireless Peer TX Bytes",
-		Labels: []string{"name", "ip", "peer_name"},
-	},
-	"af_peer_rx_bytes": {
-		Type:   TypeCounter,
-		Name:   "ubnt_af_peer_rx_bytes_total",
-		Help:   "Wireless Peer RX Bytes",
-		Labels: []string{"name", "ip", "peer_name"},
-	},
-	"af_peer_tx_rate": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_peer_tx_rate_bps",
-		Help:   "Wireless Peer TX Rate",
-		Labels: []string{"name", "ip", "peer_name"},
-	},
-	"af_peer_rx_rate": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_peer_rx_rate_bps",
-		Help:   "Wireless Peer RX Rate",
-		Labels: []string{"name", "ip", "peer_name"},
-	},
-	"af_peer_tx_pps": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_peer_tx_pps",
-		Help:   "Wireless Peer TX PPS",
-		Labels: []string{"name", "ip", "peer_name"},
-	},
-	"af_peer_rx_pps": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_peer_rx_pps",
-		Help:   "Wireless Peer RX PPS",
-		Labels: []string{"name", "ip", "peer_name"},
-	},
-	"af_nss_dl": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_nss_dl",
-		Help:   "Spatial Streams DL (MIMO)",
-		Labels: []string{"name", "ip"},
-	},
-	"af_nss_ul": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_nss_ul",
-		Help:   "Spatial Streams UL (MIMO)",
-		Labels: []string{"name", "ip"},
-	},
-	"af_capacity_dl_ideal": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_capacity_dl_ideal_bps",
-		Help:   "Ideal Capacity DL",
-		Labels: []string{"name", "ip"},
-	},
-	"af_capacity_ul_ideal": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_capacity_ul_ideal_bps",
-		Help:   "Ideal Capacity UL",
-		Labels: []string{"name", "ip"},
-	},
-	"af_signal_chain0": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_signal_chain0_dbm",
-		Help:   "Local Signal Chain 0",
-		Labels: []string{"name", "ip"},
-	},
-	"af_signal_chain1": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_signal_chain1_dbm",
-		Help:   "Local Signal Chain 1",
-		Labels: []string{"name", "ip"},
-	},
-	"af_remote_chain0": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_remote_signal_chain0_dbm",
-		Help:   "Remote Signal Chain 0",
-		Labels: []string{"name", "ip"},
-	},
-	"af_remote_chain1": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_remote_signal_chain1_dbm",
-		Help:   "Remote Signal Chain 1",
-		Labels: []string{"name", "ip"},
-	},
-	"af_remote_noise": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_remote_noise_floor_dbm",
-		Help:   "Remote Noise Floor",
-		Labels: []string{"name", "ip"},
-	},
-	"af_peer_cpu": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_peer_cpu_usage_percent",
-		Help:   "Remote Peer CPU Usage",
-		Labels: []string{"name", "ip", "peer_name"},
-	},
-	"af_peer_ram": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_peer_ram_usage_percent",
-		Help:   "Remote Peer RAM Usage",
-		Labels: []string{"name", "ip", "peer_name"},
-	},
-	"af_remote_conducted": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_remote_output_power_dbm",
-		Help:   "Remote Peer Conducted Power",
-		Labels: []string{"name", "ip"},
-	},
-	"af_remote_eirp": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_remote_eirp_dbm",
-		Help:   "Remote Peer EIRP",
-		Labels: []string{"name", "ip"},
-	},
 	"af_remote_autopower": {
 		Type:   TypeGauge,
 		Name:   "ubnt_af_remote_autopower_state",
@@ -792,36 +564,6 @@ var MetricsDef = map[string]MetricDefinition{
 		Help:   "GPS Dilution of Precision (Lower is better)",
 		Labels: []string{"name", "ip"},
 	},
-	"af_dfs_lockout_count": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_dfs_lockout_total",
-		Help:   "Number of DFS frequencies locked out",
-		Labels: []string{"name", "ip"},
-	},
-	"af_capacity_combined": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_capacity_combined_bps",
-		Help:   "Total combined DL+UL capacity (bps)",
-		Labels: []string{"name", "ip"},
-	},
-	"af_capacity_combined_ideal": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_capacity_combined_ideal_bps",
-		Help:   "Total combined ideal DL+UL capacity (bps)",
-		Labels: []string{"name", "ip"},
-	},
-	"af_signal_delta_ideal": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_signal_delta_ideal_db",
-		Help:   "Signal difference between measured and ideal signal (dB)",
-		Labels: []string{"name", "ip"},
-	},
-	"af_link_state": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_link_state",
-		Help:   "Radio Link State (1=connected, 0=disconnected)",
-		Labels: []string{"name", "ip"},
-	},
 	"af_channel_width_rx": {
 		Type:   TypeGauge,
 		Name:   "ubnt_af_channel_width_rx_mhz",
@@ -832,24 +574,6 @@ var MetricsDef = map[string]MetricDefinition{
 		Type:   TypeGauge,
 		Name:   "ubnt_af_remote_gps_sync_status",
 		Help:   "Remote peer GPS Sync State (1=Sync, 0=No Sync)",
-		Labels: []string{"name", "ip"},
-	},
-	"af_remote_ideal_signal": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_remote_ideal_signal_dbm",
-		Help:   "Ideal signal at remote peer radio (dBm)",
-		Labels: []string{"name", "ip"},
-	},
-	"af_service_uptime": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_service_uptime_seconds",
-		Help:   "Wireless radio service uptime in seconds",
-		Labels: []string{"name", "ip"},
-	},
-	"af_power_time": {
-		Type:   TypeGauge,
-		Name:   "ubnt_af_power_time_seconds",
-		Help:   "Device uptime since cold power-on in seconds",
 		Labels: []string{"name", "ip"},
 	},
 	"ram_free_bytes": {
