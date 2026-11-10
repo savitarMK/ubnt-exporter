@@ -90,7 +90,7 @@ Confirmed vulnerabilities are handled through GitHub Security Advisories:
 **In scope:**
 
 - The `ubnt-exporter` source code in this repository (`cmd/`, `internal/`).
-- The official container image built from the repository `Dockerfile`.
+- The official container image (`ghcr.io/savitarmk/ubnt-exporter:latest`) published to GitHub Container Registry from the repository `Dockerfile`.
 - Example configuration files (`*.example`) and documentation, when following them would result in an insecure deployment.
 
 **Out of scope:**

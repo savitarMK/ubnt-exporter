@@ -62,25 +62,19 @@ Comprehensive documentation is organized in the [`docs/`](docs/) directory:
 
 ### 1. Using Docker Compose (Recommended)
 
-1. Clone the repository and build the container image:
-
-```bash
-docker build -t ubnt-exporter:latest .
-```
-
-2. Prepare your configuration files:
+1. Prepare your configuration files from the provided templates:
 
 ```bash
 cp examples/config.yaml.example config.yaml
 cp examples/system.yaml.example system.yaml
 ```
 
-3. Create your local `docker-compose.yml` (see [Docker Compose deployment](docs/exporter.md#docker-compose)):
+2. Create your local `docker-compose.yml` using the official multi-arch (`linux/amd64`, `linux/arm64`) image from GitHub Container Registry (see [Docker Compose deployment](docs/exporter.md#docker-compose)):
 
 ```yaml
 services:
   ubnt-exporter:
-    image: ubnt-exporter:latest
+    image: ghcr.io/savitarmk/ubnt-exporter:latest
     container_name: ubnt-exporter
     restart: unless-stopped
     ports:
@@ -91,13 +85,13 @@ services:
     command: ["run"]
 ```
 
-4. Edit `config.yaml` with your radio IP addresses and credentials, then launch the service:
+3. Edit `config.yaml` with your radio IP addresses and credentials, then launch the service:
 
 ```bash
 docker compose up -d
 ```
 
-5. Verify metrics output:
+4. Verify metrics output:
 
 ```bash
 # Verify Ubiquiti wireless and system metrics
@@ -116,7 +110,7 @@ docker run -d \
   -p 8000:8000 \
   -v $(pwd)/config.yaml:/app/config.yaml:ro \
   -v $(pwd)/system.yaml:/app/system.yaml:ro \
-  ubnt-exporter:latest run
+  ghcr.io/savitarmk/ubnt-exporter:latest run
 ```
 
 ### 3. Running from Source or Binary

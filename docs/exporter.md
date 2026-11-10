@@ -755,7 +755,7 @@ sudo systemctl enable --now ubnt-exporter
 ```yaml
 services:
   ubnt-exporter:
-    image: ubnt-exporter:latest
+    image: ghcr.io/savitarmk/ubnt-exporter:latest
     container_name: ubnt-exporter
     restart: unless-stopped
     ports:
@@ -787,7 +787,7 @@ spec:
     spec:
       containers:
         - name: exporter
-          image: ubnt-exporter:latest
+          image: ghcr.io/savitarmk/ubnt-exporter:latest
           command: ["ubnt-exporter", "--cfg-dir", "/etc/ubnt-exporter", "run"]
           ports:
             - containerPort: 8000
