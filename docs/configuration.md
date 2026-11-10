@@ -257,7 +257,7 @@ docker run -d \
   -v /etc/ubnt-exporter/config.yaml:/app/config.yaml:ro \
   -v /etc/ubnt-exporter/secrets.yaml:/app/secrets.yaml:ro \
   -v /etc/ubnt-exporter/system.yaml:/app/system.yaml:ro \
-  ubnt-exporter:latest
+  ghcr.io/savitarmk/ubnt-exporter:latest
 ```
 
 > [!TIP]
