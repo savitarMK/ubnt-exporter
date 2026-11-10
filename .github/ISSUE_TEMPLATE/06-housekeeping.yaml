@@ -1,0 +1,43 @@
+---
+name: 🏡 Housekeeping
+description: Internal refactoring, CI/CD, dependency updates, or test suite maintenance (maintainers only)
+title: "[CHANGE] "
+labels: ["ubnt-exporter", "type: housekeeping"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        **NOTE:** This template is intended for maintainers and contributors working on internal
+        codebase architecture, Go toolchain upgrades, static analysis (`go vet`, `govulncheck`),
+        or test suite coverage.
+  - type: dropdown
+    id: subsystem
+    attributes:
+      label: Target Package / Area
+      description: Which internal package or workflow does this housekeeping task target?
+      options:
+        - "internal/collector (system, interfaces, wireless, peers, airfiber)"
+        - "internal/metrics & internal/definitions (Store, Telemetry, 159 Metric Definitions)"
+        - "internal/scraper & internal/config (HTTP/TLS Scraper, Config & Secrets Loader)"
+        - "cli/ (Daemon, Diagnostics, Self-Test, Regex Query, Export)"
+        - "test/ & testdata/fixtures/ (Unit Tests, Race Detector & Fixture Replay)"
+        - "Build, Dockerfile (debian:13.7-slim), Go Toolchain (1.27.3) & CI/CD Workflows"
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_changes
+    attributes:
+      label: Proposed Changes
+      description: >
+        Describe in detail the refactoring, cleanup, or infrastructure update you are proposing.
+    validations:
+      required: true
+  - type: textarea
+    id: justification
+    attributes:
+      label: Technical Justification
+      description: >
+        Explain why this internal change improves maintainability, testability, security, or
+        compliance with Go and Prometheus 3.x standards.
+    validations:
+      required: true

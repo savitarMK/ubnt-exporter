@@ -1,0 +1,36 @@
+# Automated GitHub Release Notes Configuration
+# Reference: https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+
+changelog:
+  exclude:
+    labels:
+      - "ignore-for-release"
+      - "duplicate"
+      - "invalid"
+      - "wontfix"
+  categories:
+    - title: "⚠️ Breaking & Schema Changes (`[CHANGE]`)"
+      labels:
+        - "type: breaking"
+        - "type: deprecation"
+        - "type: removal"
+        - "type: housekeeping"
+    - title: "✨ New Features (`[FEATURE]`)"
+      labels:
+        - "type: feature"
+    - title: "📡 Hardware & Collector Enhancements (`[ENHANCEMENT]`)"
+      labels:
+        - "type: hardware"
+        - "type: enhancement"
+    - title: "🏁 Performance Optimizations (`[PERF]`)"
+      labels:
+        - "type: performance"
+    - title: "🐛 Bug Fixes (`[BUGFIX]`)"
+      labels:
+        - "type: bug"
+    - title: "📖 Documentation & Examples (`[DOCS]`)"
+      labels:
+        - "type: documentation"
+    - title: "Other Changes"
+      labels:
+        - "*"

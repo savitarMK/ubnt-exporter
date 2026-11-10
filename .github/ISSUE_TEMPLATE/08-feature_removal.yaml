@@ -1,0 +1,24 @@
+---
+name: 🗑️ Feature Removal
+description: Remove a previously deprecated metric, flag, or configuration resource
+title: "[REMOVAL] "
+labels: ["ubnt-exporter", "type: removal"]
+body:
+  - type: input
+    id: deprecation_issue
+    attributes:
+      label: Deprecation Issue or PR Reference
+      description: Specify the issue or pull request in which this deprecation was announced.
+      placeholder: "#8"
+    validations:
+      required: true
+  - type: textarea
+    id: summary_of_changes
+    attributes:
+      label: Summary of Removal Changes
+      description: >
+        List all code, metric definitions (`internal/definitions/definitions.go`), unit tests,
+        alerting rules (`examples/alerts.yaml.example`), and documentation updates required to
+        complete the removal.
+    validations:
+      required: true

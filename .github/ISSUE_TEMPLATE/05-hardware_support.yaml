@@ -1,0 +1,65 @@
+---
+name: 📡 Hardware & Firmware Support
+description: Request support or submit a JSON fixture for a new Ubiquiti radio model or firmware
+title: "[ENHANCEMENT] Hardware Support: "
+labels: ["ubnt-exporter", "type: hardware", "status: needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        **NOTE:** Use this template to request support for a new Ubiquiti radio model/firmware or
+        to contribute an anonymized `/api/v1.0/statistics` JSON capture for offline fixture testing
+        (`testdata/fixtures/`).
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Ubiquiti Product Line
+      description: Which Ubiquiti wireless family does the device belong to?
+      options:
+        - AirMAX AC (airOS v8)
+        - AirMAX M-Series (airOS v6 — 1x1 SISO / 2x2 MIMO)
+        - AirFiber (AF5XHD / AF24 / AF60)
+        - LTU Series (LTU-Rocket, LTU-Pro, LTU-LR, LTU-Lite)
+        - Wave / 60 GHz Series
+        - Other Ubiquiti Wireless Platform
+    validations:
+      required: true
+  - type: input
+    id: model_firmware
+    attributes:
+      label: Device Model & Firmware Version
+      description: Specify the exact hardware product model and firmware build string.
+      placeholder: "e.g., LiteBeam 5AC Gen2 (WA.v8.7.19) or NanoStation M5 (XW.v6.3.6)"
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Wireless Operating Mode
+      description: In what topology role is the device operating?
+      options:
+        - Point-to-Multipoint Access Point (PtMP AP)
+        - Point-to-Multipoint Station / CPE (PtMP Station)
+        - Point-to-Point Master (PtP Master)
+        - Point-to-Point Slave (PtP Slave)
+    validations:
+      required: true
+  - type: textarea
+    id: json_fixture
+    attributes:
+      label: Anonymized /api/v1.0/statistics JSON Capture
+      description: >
+        Paste the output of `/api/v1.0/statistics` from the device so we can validate all 5 collectors
+        (`ubnt-exporter inspect -f <file>` and `ubnt-exporter export -f <file>`).
+        **IMPORTANT:** Replace all real IP addresses with RFC 1918 (`192.168.1.x`), anonymize MAC
+        prefixes, and remove any sensitive hostnames or credentials before submitting.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Missing or Unmapped Telemetry Fields (Optional)
+      description: >
+        Highlight any specific JSON fields in this firmware payload that are not yet mapped to
+        `ubnt_ap_*`, `ubnt_peer_*`, `ubnt_af_*`, `ubnt_iface_*`, or `ubnt_device_*` metrics.

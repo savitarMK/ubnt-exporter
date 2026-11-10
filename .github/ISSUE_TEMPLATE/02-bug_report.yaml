@@ -1,0 +1,139 @@
+---
+name: 🐛 Bug Report
+description: Report a reproducible bug in the current release of ubnt-exporter
+title: "[BUGFIX] "
+labels: ["ubnt-exporter", "type: bug", "status: needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        **NOTE:** This form is for reporting *reproducible bugs* in a current release of
+        `ubnt-exporter`. Before submitting, please run `ubnt-exporter check` and
+        `ubnt-exporter test` to verify your configuration and collector integrity.
+        **Never include real passwords, session tokens, or public IP addresses**—always
+        anonymize IP addresses to `192.168.1.x`.
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment Environment
+      description: How are you running `ubnt-exporter`?
+      options:
+        - Docker / Docker Compose (debian:13.7-slim)
+        - Kubernetes Pod / DaemonSet / Deployment
+        - Standalone Linux Binary / Systemd Service
+        - Built from Source (local development)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: ubnt-exporter Version
+      description: What version of `ubnt-exporter` are you running? (Output of `ubnt-exporter -v`)
+      placeholder: "v1.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: go_version
+    attributes:
+      label: Go Runtime Version
+      description: Which Go toolchain version was used to build the exporter?
+      options:
+        - "1.27.3 (Official Release / Container Default)"
+        - "1.27.x"
+        - "Other (specify inObserved Behavior)"
+    validations:
+      required: true
+  - type: input
+    id: prometheus_version
+    attributes:
+      label: Prometheus Version
+      description: Which version of Prometheus (or OpenMetrics scraper) is scraping the exporter?
+      placeholder: "Prometheus 3.16.0"
+    validations:
+      required: true
+  - type: input
+    id: hardware_firmware
+    attributes:
+      label: Target Ubiquiti Hardware & Firmware Version
+      description: >
+        Specify the radio model(s) and AirOS/LTU/AirFiber firmware version where the issue occurs.
+      placeholder: "e.g., Rocket Prism 5AC Gen2 (WA.v8.7.19), AirGrid M5 HP (XW.v6.3.6), AF-5XHD (AF09.v1.5.1)"
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Subsystem / Collector
+      description: Which component of `ubnt-exporter` is exhibiting the bug?
+      options:
+        - "collector: system (CPU, RAM, Uptime, Power Time, GPS ubnt_ap_gps_*, NTP, Temps)"
+        - "collector: wireless (AP Radio, Frequency, Channel Width, Power, DFS, Connected Clients)"
+        - "collector: peers (Stations, Signal, SISO/MIMO Chains, Imbalance, Capacity, MCS)"
+        - "collector: airfiber (AF5XHD / LTU Split-Frequency & TDD Metrics ubnt_af_*)"
+        - "collector: interfaces (Ethernet, Wireless, 802.1Q VLANs, Bridges)"
+        - "scraper: HTTP/HTTPS Client, Legacy TLS 1.0+ Cipher Suites, Token Persistence"
+        - "metrics: Store, /metrics, /probe, Native Histograms, OpenMetrics 2.0"
+        - "config: config.yaml, system.yaml, secrets.yaml, SIGHUP Hot Reload"
+        - "cli: Diagnostic Commands (diag, inspect, export, query, metrics, check, test)"
+        - "logger: Structured Logging (JSON, CEF, RFC 5424, Syslog) & Anti-Storm Dampening"
+    validations:
+      required: true
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: >
+        Provide exact steps to reproduce the issue. If possible, include the CLI command used
+        (for example, `ubnt-exporter inspect -f fixture.json` or `ubnt-exporter export -t 192.168.1.10`).
+      placeholder: |
+        1. Configure a device with `airfiber: false` in `config.yaml`
+        2. Run `ubnt-exporter export -f testdata/fixtures/airmax_m_ptmp.json`
+        3. Observe metric output...
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: What did you expect `ubnt-exporter` to emit or do?
+      placeholder: "Expected `ubnt_peer_chain_imbalance_db` to be omitted for 1x1 SISO stations."
+    validations:
+      required: true
+  - type: textarea
+    id: observed_behavior
+    attributes:
+      label: Observed Behavior & Logs
+      description: >
+        What happened instead? Include relevant log lines (`ubnt-exporter --debug ...`) or
+        scraped Prometheus metric lines. Ensure all IPs and credentials are anonymized.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: fixture_payload
+    attributes:
+      label: Anonymized /api/v1.0/statistics JSON Payload (Optional)
+      description: >
+        If the bug involves parsing device telemetry, paste the relevant sanitized section of
+        the device's `/api/v1.0/statistics` JSON response so it can be replayed with `-f`.
+      render: json
+  - type: textarea
+    id: suspected_cause
+    attributes:
+      label: Suspected Root Cause (Optional)
+      description: >
+        If you have pinpointed the package, file, or function responsible, share your analysis here.
+  - type: textarea
+    id: proposed_fix
+    attributes:
+      label: Proposed Fix (Optional)
+      description: >
+        If you have a specific code fix in mind, describe it here.
+  - type: checkboxes
+    id: volunteer
+    attributes:
+      label: Pull Request Contribution
+      description: >
+        Check this box if you would like to submit a pull request with unit/fixture tests for this bug.
+      options:
+        - label: I am willing to submit a pull request to fix this bug

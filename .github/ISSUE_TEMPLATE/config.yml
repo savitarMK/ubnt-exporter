@@ -1,0 +1,18 @@
+# Reference: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository
+blank_issues_enabled: false
+contact_links:
+  - name: 📊 Prometheus 3.x & 159 Metrics Reference
+    url: https://github.com/savitarMK/ubnt-exporter/blob/main/docs/exporter.md
+    about: "Review all 159 exported metrics, Hybrid Native Histograms, and Alertmanager 0.34+ rules before opening an issue."
+  - name: 🛠️ CLI Diagnostics & Offline Fixture Guide
+    url: https://github.com/savitarMK/ubnt-exporter/blob/main/docs/diagnostics.md
+    about: "Learn how to troubleshoot devices using 'ubnt-exporter diag', 'inspect', 'export', 'test', and offline JSON fixtures (-f)."
+  - name: ⚙️ Configuration & GitOps Secrets Guide
+    url: https://github.com/savitarMK/ubnt-exporter/blob/main/docs/configuration.md
+    about: "Documentation for config.yaml, system.yaml, external secrets.yaml, and SIGHUP zero-downtime reloads."
+  - name: 🔒 Security Policy & Vulnerability Reporting
+    url: https://github.com/savitarMK/ubnt-exporter/blob/main/.github/SECURITY.md
+    about: "Do not report security vulnerabilities in public issues. Please follow our Security Policy."
+  - name: 💬 GitHub Discussions & Support
+    url: https://github.com/savitarMK/ubnt-exporter/discussions
+    about: "Have a question about deploying ubnt-exporter, PromQL queries, or Grafana dashboards? Start a discussion."

@@ -1,0 +1,41 @@
+---
+name: ⚠️ Deprecation
+description: Flag a legacy metric name, CLI flag, or configuration field for future removal
+title: "[DEPRECATION] "
+labels: ["ubnt-exporter", "type: deprecation"]
+body:
+  - type: textarea
+    id: deprecated_functionality
+    attributes:
+      label: Deprecated Metric, Flag, or Configuration Option
+      description: >
+        Identify the specific Prometheus metric name (`ubnt_*`), CLI flag, or `config.yaml` /
+        `system.yaml` setting being marked for deprecation, along with its modern replacement.
+    validations:
+      required: true
+  - type: input
+    id: scheduled_removal
+    attributes:
+      label: Target Removal Release
+      description: In which upcoming release version will the deprecated item be removed?
+      placeholder: "v1.3.0 or v2.0.0"
+    validations:
+      required: true
+  - type: textarea
+    id: justification
+    attributes:
+      label: Justification
+      description: >
+        Explain why this metric or feature is being deprecated (for example, Prometheus 3.x /
+        OpenMetrics 2.0 naming compliance, collector deduplication, or security hardening).
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Migration Path & Impact
+      description: >
+        List all affected collectors, PromQL alerting rules (`examples/alerts.yaml.example`),
+        Grafana dashboards, and documentation files (`docs/exporter.md`, `docs/configuration.md`).
+    validations:
+      required: true
