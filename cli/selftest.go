@@ -116,6 +116,18 @@ func RunSuiteMetricsWith(defs map[string]definitions.MetricDefinition) bool {
 			fmt.Printf("  [FAIL] metric %q has invalid type %q\n", key, def.Type)
 			errs++
 		}
+		if def.Type == definitions.TypeCounter && !strings.HasSuffix(def.Name, "_total") {
+			fmt.Printf("  [FAIL] counter metric %q (%s) must end with '_total' suffix\n", key, def.Name)
+			errs++
+		}
+		if def.Type != definitions.TypeCounter && strings.HasSuffix(def.Name, "_total") {
+			fmt.Printf("  [FAIL] non-counter metric %q (%s) must not end with '_total' suffix\n", key, def.Name)
+			errs++
+		}
+		if def.Type == definitions.TypeInfo && !strings.HasSuffix(def.Name, "_info") {
+			fmt.Printf("  [FAIL] info metric %q (%s) must end with '_info' suffix\n", key, def.Name)
+			errs++
+		}
 		for _, lbl := range def.Labels {
 			if !config.IsValidPrometheusLabelName(lbl) {
 				fmt.Printf("  [FAIL] metric %q has invalid label name %q\n", key, lbl)

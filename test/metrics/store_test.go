@@ -169,12 +169,26 @@ func TestNewStoreIsolationAndScrapeErrorPersistence(t *testing.T) {
 	col.Describe(nil)
 	descCh := make(chan *prometheus.Desc, 10)
 	col.Describe(descCh)
+	isolated.ScrapeDuration.WithLabelValues("ISO-AP", "10.9.9.9").Observe(0.145)
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(col)
+	reg.MustRegister(isolated.ScrapeDuration)
 	metrics.GetTelemetry().Register(reg)
 	mfs, err := reg.Gather()
 	if err != nil || len(mfs) == 0 {
 		t.Errorf("expected gathered metrics from UbiquitiCollector, got len=%d err=%v", len(mfs), err)
+	}
+	foundNativeScrapeHist := false
+	for _, mf := range mfs {
+		if *mf.Name == "ubnt_scrape_duration_seconds" && len(mf.Metric) > 0 && mf.Metric[0].Histogram != nil {
+			h := mf.Metric[0].Histogram
+			if h.Schema != nil && len(h.PositiveSpan) > 0 && len(h.Bucket) > 0 {
+				foundNativeScrapeHist = true
+			}
+		}
+	}
+	if !foundNativeScrapeHist {
+		t.Errorf("expected Prometheus 3.x Hybrid Native Histogram + Classic Buckets on ubnt_scrape_duration_seconds")
 	}
 
 	// Test empty buffer Commit and Len

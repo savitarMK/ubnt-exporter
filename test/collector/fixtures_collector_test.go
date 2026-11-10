@@ -174,6 +174,16 @@ func TestCollectors_Fixture_AirMaxAC_PtMP_Strict(t *testing.T) {
 	if sink.metrics["peer_cinr_dl"] != 31.0 || sink.metrics["peer_cinr_ul"] != 29.0 {
 		t.Errorf("expected CINR dl=31.0 ul=29.0, got dl=%v ul=%v", sink.metrics["peer_cinr_dl"], sink.metrics["peer_cinr_ul"])
 	}
+	// Verify local GPS metrics use global ap_gps_* keys and zero af_* metrics are emitted on AirMAX AC
+	if sink.metrics["ap_gps_fix"] != 0.0 || sink.metrics["ap_lat"] != 19.432608 || sink.metrics["ap_lon"] != -99.133209 {
+		t.Errorf("unexpected AirMAX AC global GPS metrics: fix=%v lat=%v lon=%v",
+			sink.metrics["ap_gps_fix"], sink.metrics["ap_lat"], sink.metrics["ap_lon"])
+	}
+	for k := range sink.metrics {
+		if len(k) >= 3 && k[:3] == "af_" {
+			t.Errorf("unexpected AirFiber metric %q emitted for AirMAX AC device", k)
+		}
+	}
 }
 
 func TestCollectors_Fixture_AF5XHD_PtP_Strict(t *testing.T) {
@@ -191,6 +201,11 @@ func TestCollectors_Fixture_AF5XHD_PtP_Strict(t *testing.T) {
 	collector.ProcessWireless(ctx, root, apLabels, nil, sink)
 	collector.ProcessAF5XHD(ctx, root, apLabels, nil, sink)
 	collector.ProcessPeers(ctx, root, apLabels, sink)
+
+	if sink.metrics["ap_gps_fix"] != 1.0 || sink.metrics["ap_gps_sats"] != 12.0 || sink.metrics["ap_gps_dim"] != 3.0 || sink.metrics["ap_gps_alt"] != 1650.0 || sink.metrics["ap_gps_dop"] != 0.74 {
+		t.Errorf("unexpected global ap_gps_* metrics on AF5XHD: fix=%v sats=%v dim=%v alt=%v dop=%v",
+			sink.metrics["ap_gps_fix"], sink.metrics["ap_gps_sats"], sink.metrics["ap_gps_dim"], sink.metrics["ap_gps_alt"], sink.metrics["ap_gps_dop"])
+	}
 
 	if sink.metrics["af_frequency_tx"] != 5995.0 || sink.metrics["af_frequency_rx"] != 6065.0 || sink.metrics["af_channel_width_rx"] != 30.0 {
 		t.Errorf("unexpected AF5XHD split-frequency metrics: tx=%v rx=%v width_rx=%v",

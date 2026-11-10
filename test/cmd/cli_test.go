@@ -532,6 +532,24 @@ func TestCLI_RunSuiteMetrics_AllBranches(t *testing.T) {
 		t.Errorf("expected RunSuiteMetricsWith to fail on invalid label name")
 	}
 
+	if cli.RunSuiteMetricsWith(map[string]definitions.MetricDefinition{
+		"m5": {Name: "ubnt_counter_no_suffix", Help: "help", Type: definitions.TypeCounter, Labels: []string{"name", "ip"}},
+	}) {
+		t.Errorf("expected RunSuiteMetricsWith to fail on counter without _total suffix")
+	}
+
+	if cli.RunSuiteMetricsWith(map[string]definitions.MetricDefinition{
+		"m6": {Name: "ubnt_gauge_with_total", Help: "help", Type: definitions.TypeGauge, Labels: []string{"name", "ip"}},
+	}) {
+		t.Errorf("expected RunSuiteMetricsWith to fail on gauge with _total suffix")
+	}
+
+	if cli.RunSuiteMetricsWith(map[string]definitions.MetricDefinition{
+		"m7": {Name: "ubnt_info_no_suffix", Help: "help", Type: definitions.TypeInfo, Labels: []string{"name", "ip"}},
+	}) {
+		t.Errorf("expected RunSuiteMetricsWith to fail on info without _info suffix")
+	}
+
 	if !cli.RunSuiteMetricsWith(map[string]definitions.MetricDefinition{
 		"valid": {Name: "ubnt_valid", Help: "valid gauge", Type: definitions.TypeGauge, Labels: []string{"name", "ip"}},
 	}) {

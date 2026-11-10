@@ -41,7 +41,7 @@ The `ubnt-exporter` provides native Prometheus and OpenMetrics endpoints for col
 > All example configuration and alerting files are maintained in the dedicated [`examples/`](../examples/) folder:
 > - [`examples/config.yaml.example`](../examples/config.yaml.example): Radio inventory and credentials.
 > - [`examples/system.yaml.example`](../examples/system.yaml.example): Daemon runtime, timeouts, and logging formats.
-> - [`examples/alerts.yaml.example`](../examples/alerts.yaml.example): Production Prometheus 3.15+ alert rules.
+> - [`examples/alerts.yaml.example`](../examples/alerts.yaml.example): Production Prometheus 3.x alert rules.
 > - [`examples/alertmanager.yaml.example`](../examples/alertmanager.yaml.example): Alertmanager 0.34+ routing and templates.
 
 ---
@@ -93,12 +93,13 @@ The exporter immediately initiates an isolated scrape against the specified devi
 
 ## Prometheus & OpenMetrics Compatibility
 
-### OpenMetrics 2.0 Negotiation
+### OpenMetrics 2.0 & Prometheus 3.x Native Histograms
 
-The exporter implements HTTP content negotiation according to Prometheus and OpenMetrics standards:
+The exporter implements HTTP content negotiation and metric exposition according to **Prometheus 3.x** and **OpenMetrics 2.0** standards:
 
-- Responds with `application/openmetrics-text; version=1.0.0` or version 2.0 when requested by Prometheus via `Accept` headers.
-- Emits standardized `# HELP`, `# TYPE`, and `# EOF` tokens.
+- Responds with `application/openmetrics-text; version=1.0.0` (or Protobuf / OpenMetrics 2.0) when requested by Prometheus via `Accept` headers.
+- Emits **Hybrid Native Histograms** (`NativeHistogramBucketFactor: 1.1`, `NativeHistogramMaxBucketNumber: 100`, `NativeHistogramMinResetDuration: 1h`) alongside classic `_bucket` series for both `ubnt_scrape_duration_seconds` and `ubnt_exporter_collector_duration_seconds`.
+- Enforces strict OpenMetrics type and suffix compliance: `_total` is exclusively reserved for `Counter` metrics, `_info` is reserved for `Info` metrics, and every metric includes a complete, unit-explicit `# HELP` and `# TYPE` header.
 - Exposes `ubnt_build_info` with software version, commit revision, and Go runtime environment.
 
 ### Unix Domain Socket (UDS) Scraping
@@ -187,11 +188,11 @@ All 159 metrics are exposed with the `ubnt_` prefix.
 | `ubnt_ap_gps_fix` | Gauge | State | Local GPS fix status (`1` = valid fix, `0` = no fix). |
 | `ubnt_ap_latitude` | Gauge | Degrees | Local GPS latitude coordinate. |
 | `ubnt_ap_longitude` | Gauge | Degrees | Local GPS longitude coordinate. |
-| `ubnt_device_gps_dimension` | Gauge | Dimension | Local GPS fix dimension (`0` = none, `2` = 2D, `3` = 3D). |
-| `ubnt_af_gps_altitude_meters` | Gauge | Meters | Local GPS altitude above sea level in meters. |
-| `ubnt_af_gps_satellites` | Gauge | Count | Number of GPS satellites tracked by the local device. |
-| `ubnt_af_gps_dop` | Gauge | Factor | Local GPS Dilution of Precision (DOP). |
-| `ubnt_device_gps_time_sync_enabled` | Gauge | State | Local GPS time synchronization enabled (`1` = true, `0` = false). |
+| `ubnt_ap_gps_dimension` | Gauge | Dimension | Local GPS fix dimension (`0` = none, `2` = 2D, `3` = 3D). |
+| `ubnt_ap_gps_altitude_meters` | Gauge | Meters | Local GPS altitude above sea level in meters. |
+| `ubnt_ap_gps_satellites` | Gauge | Count | Number of GPS satellites tracked by the local device. |
+| `ubnt_ap_gps_dop` | Gauge | Factor | Local GPS Dilution of Precision (DOP). |
+| `ubnt_ap_gps_time_sync_enabled` | Gauge | State | Local GPS time synchronization enabled (`1` = true, `0` = false). |
 | `ubnt_device_ntp_sync_enabled` | Gauge | State | Local NTP client time synchronization enabled (`1` = true, `0` = false). |
 | `ubnt_device_ntp_last_sync_timestamp_seconds` | Gauge | Timestamp | Unix epoch timestamp in seconds of the last local NTP synchronization. |
 
@@ -212,7 +213,7 @@ Shared across both AirMAX (M/AC) and AirFiber / LTU radios:
 | `ubnt_ap_channel_width_mhz` | Gauge | MHz | Transmit/operating channel bandwidth in MHz (e.g. `10`, `20`, `30`, `40`, `50`, `80`, `100`). |
 | `ubnt_ap_output_power_dbm` | Gauge | dBm | Conducted radio transmit power. |
 | `ubnt_ap_output_power_eirp_dbm` | Gauge | dBm | Effective Isotropic Radiated Power. |
-| `ubnt_connected_clients_total` | Gauge | Count | Number of active connected wireless stations/peers. |
+| `ubnt_ap_connected_clients` | Gauge | Clients | Number of active connected wireless stations/peers. |
 | `ubnt_ap_dfs_enabled` | Gauge | State | Dynamic Frequency Selection (DFS) enabled on radio (`1` = enabled, `0` = disabled). |
 | `ubnt_ap_dfs_status` | Gauge | State | Dynamic Frequency Selection status (`0` = normal, `1` = CAC scanning). |
 | `ubnt_ap_dfs_cac_duration_seconds` | Gauge | Seconds | Total configured DFS Channel Availability Check (CAC) scan duration in seconds. |
@@ -229,8 +230,8 @@ Station metrics include the following identification labels: `ap_name`, `ap_ip`,
 | `ubnt_peer_distance_meters` | Gauge | Meters | Estimated physical radio link distance in meters. |
 | `ubnt_peer_uptime_seconds` | Gauge | Seconds | Duration in seconds since this station associated with the AP. |
 | `ubnt_peer_power_time_seconds` | Gauge | Seconds | Station hardware uptime since cold power-on. |
-| `ubnt_peer_cpu_usage` | Gauge | Percent | Station CPU utilization percentage (`0` to `100`). |
-| `ubnt_peer_ram_usage` | Gauge | Percent | Station RAM memory utilization percentage (`0` to `100`). |
+| `ubnt_peer_cpu_usage_percent` | Gauge | Percent | Station CPU utilization percentage (`0` to `100`). |
+| `ubnt_peer_ram_usage_percent` | Gauge | Percent | Station RAM memory utilization percentage (`0` to `100`). |
 | `ubnt_peer_ram_free_bytes` | Gauge | Bytes | Station free RAM memory in bytes. |
 | `ubnt_peer_ram_total_bytes` | Gauge | Bytes | Station total RAM memory in bytes. |
 | `ubnt_peer_signal_dbm` | Gauge | dBm | Local signal strength received from the station. |
@@ -323,22 +324,22 @@ The exporter exposes detailed self-observability and internal telemetry metrics 
 | Metric Name | Type | Unit | Description |
 | :--- | :--- | :--- | :--- |
 | `ubnt_build_info` | Gauge | Info | Exporter software version, git revision, and compiler runtime info. |
-| `ubnt_scrape_duration_seconds` | Summary | Seconds | Scrape duration per target device (`name`, `ip`). |
-| `ubnt_exporter_collector_duration_seconds` | Histogram | Seconds | Execution latency histogram of individual collector modules (`system`, `interfaces`, `wireless`, `airfiber`, `peers`). |
+| `ubnt_scrape_duration_seconds` | Histogram (Native + Classic) | Seconds | Scrape duration distribution per target device (`name`, `ip`). |
+| `ubnt_exporter_collector_duration_seconds` | Histogram (Native + Classic) | Seconds | Execution latency histogram of individual collector modules (`system`, `interfaces`, `wireless`, `airfiber`, `peers`). |
 | `ubnt_exporter_collector_success` | Gauge | State | Success status of the last collector execution (`1` = success, `0` = failure/panic recovered). |
 | `ubnt_exporter_collector_executions_total` | Counter | Count | Total module executions broken down by `collector` and `status` (`success`, `error`). |
 | `ubnt_exporter_scrape_requests_total` | Counter | Count | Total target device scrape attempts partitioned by result `status` (`success`, `timeout`, `conn_error`, `auth_error`, `http_error`, `decode_error`). |
 | `ubnt_exporter_scrape_cycle_duration_seconds` | Gauge | Seconds | Wall-clock execution time of the most recent inventory scrape cycle. |
 | `ubnt_exporter_last_scrape_timestamp_seconds` | Gauge | Timestamp | Unix epoch timestamp of the most recent completed scrape cycle. |
-| `ubnt_exporter_devices_configured_total` | Gauge | Count | Total number of Ubiquiti devices declared in `config.yaml`. |
-| `ubnt_exporter_devices_online_total` | Gauge | Count | Count of devices responding successfully in the current scrape cycle. |
+| `ubnt_exporter_devices_configured` | Gauge | Count | Number of target Ubiquiti devices declared in `config.yaml`. |
+| `ubnt_exporter_devices_online` | Gauge | Count | Number of devices responding successfully in the current scrape cycle. |
 | `go_*` / `process_*` | Various | Various | Standard Go runtime and process metrics (memory allocations, goroutines, GC latency, CPU seconds, open file descriptors). |
 
 #### Exporter Operational PromQL Queries
 
 ```promql
 # Overall device availability ratio across the fleet
-ubnt_exporter_devices_online_total / ubnt_exporter_devices_configured_total * 100
+ubnt_exporter_devices_online / ubnt_exporter_devices_configured * 100
 
 # Scrape failure rate by error reason
 sum by (status) (rate(ubnt_exporter_scrape_requests_total[5m]))
@@ -543,7 +544,7 @@ groups:
           runbook_url: "docs/exporter.md#exporter-internal-telemetry"
 
       - alert: UbntExporterLowFleetAvailability
-        expr: (ubnt_exporter_devices_online_total / ubnt_exporter_devices_configured_total) * 100 < 80
+        expr: (ubnt_exporter_devices_online / ubnt_exporter_devices_configured) * 100 < 80
         for: 10m
         labels:
           severity: warning

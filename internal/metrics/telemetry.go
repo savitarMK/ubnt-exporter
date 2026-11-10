@@ -31,55 +31,58 @@ func NewExporterTelemetry() *ExporterTelemetry {
 	t := &ExporterTelemetry{
 		CollectorDuration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Name:    "ubnt_exporter_collector_duration_seconds",
-				Help:    "Duration of individual collector execution in seconds.",
-				Buckets: []float64{0.00005, 0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5},
+				Name:                            "ubnt_exporter_collector_duration_seconds",
+				Help:                            "Duration of individual collector module execution in seconds.",
+				Buckets:                         []float64{0.00005, 0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5},
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  100,
+				NativeHistogramMinResetDuration: time.Hour,
 			},
 			[]string{"collector"},
 		),
 		CollectorSuccess: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name: "ubnt_exporter_collector_success",
-				Help: "Status of the last collector execution (1 = success, 0 = failure).",
+				Help: "Status of the last collector module execution (1 = success, 0 = failure).",
 			},
 			[]string{"collector"},
 		),
 		CollectorExecutions: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "ubnt_exporter_collector_executions_total",
-				Help: "Total count of collector module executions.",
+				Help: "Total number of collector module executions partitioned by collector and status.",
 			},
 			[]string{"collector", "status"},
 		),
 		ScrapeRequestsTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "ubnt_exporter_scrape_requests_total",
-				Help: "Total count of target device scrape attempts by status result.",
+				Help: "Total number of target device scrape attempts partitioned by outcome status.",
 			},
 			[]string{"status"},
 		),
 		ScrapeCycleDuration: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "ubnt_exporter_scrape_cycle_duration_seconds",
-				Help: "Duration of the most recent scrape cycle over all configured devices in seconds.",
+				Help: "Duration of the most recent full scrape cycle across all configured devices in seconds.",
 			},
 		),
 		LastScrapeTimestamp: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "ubnt_exporter_last_scrape_timestamp_seconds",
-				Help: "Unix timestamp of the most recent completed scrape cycle.",
+				Help: "Unix timestamp of the most recent completed full scrape cycle in seconds.",
 			},
 		),
 		DevicesConfigured: prometheus.NewGauge(
 			prometheus.GaugeOpts{
-				Name: "ubnt_exporter_devices_configured_total",
-				Help: "Total number of devices configured in the inventory.",
+				Name: "ubnt_exporter_devices_configured",
+				Help: "Number of target Ubiquiti devices configured in the inventory.",
 			},
 		),
 		DevicesOnline: prometheus.NewGauge(
 			prometheus.GaugeOpts{
-				Name: "ubnt_exporter_devices_online_total",
-				Help: "Number of monitored devices responding successfully (online) in the current cycle.",
+				Name: "ubnt_exporter_devices_online",
+				Help: "Number of monitored Ubiquiti devices responding successfully (online) in the current scrape cycle.",
 			},
 		),
 	}

@@ -122,23 +122,23 @@ func ProcessSystem(ctx context.Context, dataRoot map[string]any, apLabels map[st
 		}
 		store.UpdateMetric("ap_gps_fix", labels, fixVal)
 		if gps["sats"] != nil {
-			store.UpdateMetric("af_gps_sats", labels, utils.SafeFloat(gps["sats"]))
+			store.UpdateMetric("ap_gps_sats", labels, utils.SafeFloat(gps["sats"]))
 		}
 		if gps["dop"] != nil {
-			store.UpdateMetric("af_gps_dop", labels, utils.SafeFloat(gps["dop"]))
+			store.UpdateMetric("ap_gps_dop", labels, utils.SafeFloat(gps["dop"]))
 		}
 		if gps["alt"] != nil {
-			store.UpdateMetric("af_gps_alt", labels, utils.SafeFloat(gps["alt"]))
+			store.UpdateMetric("ap_gps_alt", labels, utils.SafeFloat(gps["alt"]))
 		}
 		if gps["dim"] != nil {
-			store.UpdateMetric("device_gps_dim", labels, utils.SafeFloat(gps["dim"]))
+			store.UpdateMetric("ap_gps_dim", labels, utils.SafeFloat(gps["dim"]))
 		}
 		if gps["timeSyncEnabled"] != nil {
 			tsVal := 0.0
 			if gps["timeSyncEnabled"] == true || utils.SafeFloat(gps["timeSyncEnabled"]) == 1.0 {
 				tsVal = 1.0
 			}
-			store.UpdateMetric("device_gps_time_sync", labels, tsVal)
+			store.UpdateMetric("ap_gps_time_sync", labels, tsVal)
 		}
 		if gps["fix"] == true || (gps["lat"] != nil && gps["lon"] != nil) {
 			lat := utils.SafeFloat(gps["lat"])
