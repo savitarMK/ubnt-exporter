@@ -1,0 +1,69 @@
+---
+name: 🏁 Performance
+description: Report a performance bottleneck or propose a resource/latency optimization
+title: "[PERF] "
+labels: ["ubnt-exporter", "type: performance", "status: needs triage"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: ubnt-exporter Version
+      description: What version of `ubnt-exporter` are you running? (Run `ubnt-exporter -v`)
+      placeholder: "v1.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: go_version
+    attributes:
+      label: Go Runtime Version
+      description: Which Go runtime version is executing the exporter?
+      options:
+        - "1.27.3 (Official Release / Container Default)"
+        - "1.27.x"
+        - "Other"
+    validations:
+      required: true
+  - type: input
+    id: inventory_scale
+    attributes:
+      label: Inventory Scale & Concurrency Settings
+      description: >
+        How many Ubiquiti devices and connected stations (peers) are being monitored, and what are
+        your `scrape_interval` and `workers` settings in `system.yaml`?
+      placeholder: "e.g., 300 APs, ~4,500 CPEs, scrape_interval: 30s, workers: 50"
+    validations:
+      required: true
+  - type: checkboxes
+    id: areas
+    attributes:
+      label: Area(s) of Concern
+      description: Which exporter subsystem(s) are involved?
+      options:
+        - label: Asynchronous Worker Pool & HTTP/TLS Connection Reuse
+        - label: In-Memory Metric Store (`metrics.Store` / `metrics.Buffer` Atomic Commit)
+        - label: Collector JSON Decoding & Extraction (`system`, `interfaces`, `wireless`, `peers`, `airfiber`)
+        - label: Prometheus Exposition Endpoints (`/metrics`, `/probe`, OpenMetrics / Native Histograms)
+        - label: Memory Footprint, Allocations, or Go Garbage Collection (`process_resident_memory_bytes`)
+        - label: CLI Diagnostics, Regex Filtering (`RE2`), or In-Memory Log Ring Buffer
+    validations:
+      required: true
+  - type: textarea
+    id: observations
+    attributes:
+      label: Observations & Self-Telemetry Metrics
+      description: >
+        Describe the performance behavior observed. Include values from internal self-telemetry
+        metrics such as `ubnt_exporter_scrape_cycle_duration_seconds`,
+        `ubnt_exporter_collector_duration_seconds`, `ubnt_scrape_duration_seconds`,
+        `process_resident_memory_bytes`, `go_goroutines`, or `pprof`/benchmark outputs.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_changes
+    attributes:
+      label: Proposed Optimization
+      description: >
+        What specific algorithmic, concurrency, or memory allocation changes do you propose to
+        improve performance?
+    validations:
+      required: true

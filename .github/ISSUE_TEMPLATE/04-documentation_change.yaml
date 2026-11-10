@@ -1,0 +1,45 @@
+---
+name: 📖 Documentation Change
+description: Suggest an addition, correction, or improvement to ubnt-exporter documentation and examples
+title: "[DOCS] "
+labels: ["ubnt-exporter", "type: documentation", "status: needs triage"]
+body:
+  - type: dropdown
+    id: change_type
+    attributes:
+      label: Change Type
+      description: What type of documentation change are you proposing?
+      options:
+        - Addition (new guide, metric documentation, or example)
+        - Correction (inaccurate metric name, flag, or PromQL expression)
+        - Removal (outdated or deprecated information)
+        - Cleanup (formatting, typography, broken links, or clarity)
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Documentation File / Area
+      description: Which document or example template does this change primarily affect?
+      options:
+        - "README.md (Overview, Quickstart, CLI Summary & Architecture)"
+        - "docs/exporter.md (159 Metrics Reference, Prometheus 3.x & Alertmanager Integration)"
+        - "docs/configuration.md (config.yaml, system.yaml, secrets.yaml & SIGHUP Reload)"
+        - "docs/diagnostics.md (CLI Commands, Offline Fixture Replay & SIEM Logging)"
+        - "examples/config.yaml.example & examples/secrets.yaml.example"
+        - "examples/system.yaml.example"
+        - "examples/alerts.yaml.example & examples/alertmanager.yaml.example"
+        - ".github/SECURITY.md (Security Policy & Deployment Hardening)"
+        - "Other"
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_changes
+    attributes:
+      label: Proposed Changes
+      description: >
+        Describe the proposed documentation changes in detail and explain why they are needed.
+        Note that all documentation and examples must use American English and generic RFC 1918
+        IP addresses (`192.168.1.x`).
+    validations:
+      required: true

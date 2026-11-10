@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - 'release/**'
   pull_request:
     branches:
       - main
+      - 'release/**'
   schedule:
     - cron: '0 4 * * 1' # Runs every Monday at 04:00 UTC
   workflow_dispatch:
@@ -50,7 +52,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   code-quality:
-    name: Code Quality & Race Tests
+    name: Code Quality, Race Tests & Built-in Self-Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -70,7 +72,16 @@ jobs:
         run: go vet ./...
 
       - name: Run Unit Tests with Race Detector
-        run: go test -v -race -coverpkg=./internal/... ./test/...
+        run: go test -v -race -coverpkg=./internal/...,./cli/... ./test/...
+
+      - name: Build Binary and Execute Built-in Self-Test Suites
+        run: |
+          go build -o ubnt-exporter ./cmd/ubnt-exporter
+          ./ubnt-exporter test metrics
+          ./ubnt-exporter test collectors
+          ./ubnt-exporter test collectors -f testdata/fixtures/airmax_ac_ptmp.json
+          ./ubnt-exporter test collectors -f testdata/fixtures/airmax_m_ptmp.json
+          ./ubnt-exporter test collectors -f testdata/fixtures/af5xhd_ptp.json
 
   trivy-fs:
     name: Filesystem & Config Security Scan (Trivy)
@@ -80,7 +91,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Run Trivy vulnerability scanner in repo mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: 'fs'
           scan-ref: '.'

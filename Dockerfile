@@ -1,6 +1,11 @@
-ARG APP_VERSION=1.1.2
+ARG APP_VERSION=1.2.0
 
-FROM golang:1.27.3-bookworm AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.3-bookworm AS builder
+
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+ARG GIT_REVISION=unknown
+ARG GIT_BRANCH=main
 
 WORKDIR /build
 
@@ -17,14 +22,14 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     BUILD_VERSION=$(tr -d '[:space:]' < VERSION) && \
     BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") && \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-        -ldflags="-s -w -X 'ubnt-exporter/internal/definitions.VERSION=${BUILD_VERSION}' -X 'ubnt-exporter/internal/definitions.BuildDate=${BUILD_DATE}'" \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+        -ldflags="-s -w -X 'ubnt-exporter/internal/definitions.VERSION=${BUILD_VERSION}' -X 'ubnt-exporter/internal/definitions.Revision=${GIT_REVISION}' -X 'ubnt-exporter/internal/definitions.Branch=${GIT_BRANCH}' -X 'ubnt-exporter/internal/definitions.BuildDate=${BUILD_DATE}'" \
         -trimpath \
         -o /build/ubnt-exporter ./cmd/ubnt-exporter
 
 FROM debian:13.7-slim AS runner
 
-ARG APP_VERSION=1.1.2
+ARG APP_VERSION=1.2.0
 
 LABEL org.opencontainers.image.title="ubnt-exporter" \
       org.opencontainers.image.description="Prometheus exporter for Ubiquiti AirMAX (M/AC), LTU, and AirFiber devices" \

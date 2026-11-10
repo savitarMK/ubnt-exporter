@@ -1,0 +1,278 @@
+name: Build & Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to build (e.g., v1.2.0)'
+        required: false
+        default: 'v1.2.0'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  verify:
+    name: Verify Tests & Schema Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.3'
+          check-latest: true
+          cache: true
+
+      - name: Verify dependencies and static analysis
+        run: |
+          go mod verify
+          go vet ./...
+
+      - name: Run unit tests with race detector
+        run: go test -race -coverpkg=./internal/...,./cli/... ./test/...
+
+      - name: Run built-in self-test suites
+        run: |
+          go build -o ubnt-exporter ./cmd/ubnt-exporter
+          ./ubnt-exporter test metrics
+          ./ubnt-exporter test collectors
+
+  build-binaries:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    needs: verify
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            archive: tar.gz
+          - goos: linux
+            goarch: arm64
+            archive: tar.gz
+          - goos: linux
+            goarch: arm
+            goarm: '7'
+            archive: tar.gz
+          - goos: darwin
+            goarch: amd64
+            archive: tar.gz
+          - goos: darwin
+            goarch: arm64
+            archive: tar.gz
+          - goos: windows
+            goarch: amd64
+            ext: .exe
+            archive: zip
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.3'
+          check-latest: true
+          cache: true
+
+      - name: Compile and package release archive
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          EXT: ${{ matrix.ext }}
+          ARCHIVE_FMT: ${{ matrix.archive }}
+        run: |
+          RAW_TAG="${GITHUB_REF_NAME}"
+          if [[ "${RAW_TAG}" != v* ]]; then
+            RAW_TAG="v$(tr -d '[:space:]' < VERSION)"
+          fi
+          VERSION_CLEAN="${RAW_TAG#v}"
+          GIT_REV="$(git rev-parse --short HEAD)"
+          BUILD_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+          ARCH_LABEL="${GOARCH}"
+          if [ "${GOARCH}" = "arm" ] && [ -n "${GOARM}" ]; then
+            ARCH_LABEL="armv${GOARM}"
+          fi
+
+          PKG_NAME="ubnt-exporter-${VERSION_CLEAN}.${GOOS}-${ARCH_LABEL}"
+          STAGE_DIR="dist/${PKG_NAME}"
+          mkdir -p "${STAGE_DIR}/examples"
+
+          CGO_ENABLED=0 go build \
+            -trimpath \
+            -ldflags="-s -w -X 'ubnt-exporter/internal/definitions.VERSION=${VERSION_CLEAN}' -X 'ubnt-exporter/internal/definitions.Revision=${GIT_REV}' -X 'ubnt-exporter/internal/definitions.Branch=${RAW_TAG}' -X 'ubnt-exporter/internal/definitions.BuildDate=${BUILD_DATE}'" \
+            -o "${STAGE_DIR}/ubnt-exporter${EXT}" \
+            ./cmd/ubnt-exporter
+
+          cp LICENSE README.md CHANGELOG.md CONTRIBUTING.md VERSION "${STAGE_DIR}/"
+          cp examples/*.example "${STAGE_DIR}/examples/"
+
+          cd dist
+          if [ "${ARCHIVE_FMT}" = "zip" ]; then
+            zip -rq "${PKG_NAME}.zip" "${PKG_NAME}"
+          else
+            tar -czf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
+          fi
+          rm -rf "${PKG_NAME}"
+
+      - name: Upload compiled archive artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: release-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release, Checksums & Automated Changelog
+    needs: build-binaries
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download all compiled artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate SHA-256 checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz *.zip > sha256sums.txt
+          cat sha256sums.txt
+
+      - name: Extract or Generate Structured Changelog Section
+        run: |
+          python3 - << 'EOF'
+          import datetime, os, re, subprocess
+
+          tag = os.environ.get("GITHUB_REF_NAME", "v1.2.0")
+          today = datetime.date.today().isoformat()
+          changelog_path = "CHANGELOG.md"
+
+          with open(changelog_path, "r", encoding="utf-8") as f:
+              content = f.read()
+
+          pattern = re.compile(
+              rf"^## \[{re.escape(tag)}\].*?(?=^## \[|\Z)",
+              re.MULTILINE | re.DOTALL,
+          )
+          match = pattern.search(content)
+
+          if match:
+              release_notes = match.group(0).strip() + "\n"
+          else:
+              tags_out = subprocess.check_output(
+                  ["git", "tag", "--sort=-v:refname"], text=True
+              ).splitlines()
+              prev_tag = next((t for t in tags_out if t != tag and t.startswith("v")), "")
+              rev_range = f"{prev_tag}..HEAD" if prev_tag else "HEAD"
+              commits = subprocess.check_output(
+                  ["git", "log", rev_range, "--no-merges", "--pretty=format:%s (%h)"],
+                  text=True,
+              ).splitlines()
+
+              features, changes, perf, fixes = [], [], [], []
+              for c in commits:
+                  low = c.lower()
+                  if "[feature]" in low or low.startswith("feat"):
+                      features.append(f"- **`[FEATURE]`** {c}")
+                  elif "[perf]" in low or low.startswith("perf"):
+                      perf.append(f"- **`[PERF]`** {c}")
+                  elif "[bugfix]" in low or low.startswith("fix"):
+                      fixes.append(f"- **`[BUGFIX]`** {c}")
+                  elif "[change]" in low or "!" in low.split(":")[0]:
+                      changes.append(f"- **`[CHANGE]`** {c}")
+                  else:
+                      changes.append(f"- **`[ENHANCEMENT]`** {c}")
+
+              sections = [f"## [{tag}] - {today}\n"]
+              if features:
+                  sections.append("### Added (`[FEATURE]`)\n\n" + "\n".join(features) + "\n")
+              if changes:
+                  sections.append("### Changed (`[CHANGE]` & `[ENHANCEMENT]`)\n\n" + "\n".join(changes) + "\n")
+              if perf:
+                  sections.append("### Performance (`[PERF]`)\n\n" + "\n".join(perf) + "\n")
+              if fixes:
+                  sections.append("### Fixed (`[BUGFIX]`)\n\n" + "\n".join(fixes) + "\n")
+
+              release_notes = "\n".join(sections)
+
+          os.makedirs("dist", exist_ok=True)
+          with open("dist/RELEASE_NOTES.md", "w", encoding="utf-8") as out:
+              out.write(release_notes)
+          print("Generated dist/RELEASE_NOTES.md successfully.")
+          EOF
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: dist/RELEASE_NOTES.md
+          generate_release_notes: true
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/sha256sums.txt
+
+  publish-container:
+    name: Publish Multi-Arch Container Image (GHCR)
+    needs: verify
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata and tags
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Build and push multi-arch container image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+            GIT_REVISION=${{ github.sha }}
+            GIT_BRANCH=${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

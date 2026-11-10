@@ -1,0 +1,89 @@
+---
+name: ✨ Feature Request
+description: Propose a new collector metric, CLI capability, or exporter enhancement
+title: "[FEATURE] "
+labels: ["ubnt-exporter", "type: feature", "status: needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        **NOTE:** This form is for submitting well-defined proposals to extend or enhance
+        `ubnt-exporter`. Before opening a request, please verify whether the metric or capability
+        already exists using `ubnt-exporter metrics` or the
+        [Exporter Metric Reference](https://github.com/savitarMK/ubnt-exporter/blob/main/docs/exporter.md).
+  - type: input
+    id: version
+    attributes:
+      label: ubnt-exporter Version
+      description: What version of `ubnt-exporter` are you currently running? (Run `ubnt-exporter -v`)
+      placeholder: "v1.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: hardware_family
+    attributes:
+      label: Target Ubiquiti Hardware Family
+      description: Which Ubiquiti hardware platform does this feature apply to?
+      options:
+        - All Platforms / Global Exporter Feature
+        - AirMAX AC Series (airOS v8)
+        - AirMAX M-Series (airOS v6 — 1x1 SISO / 2x2 MIMO)
+        - AirFiber 5XHD / LTU Series
+        - Other Ubiquiti Platform (specify below)
+    validations:
+      required: true
+  - type: dropdown
+    id: feature_type
+    attributes:
+      label: Feature Category
+      description: Which subsystem of `ubnt-exporter` does this proposal extend?
+      options:
+        - New Prometheus Metric(s) / Collector Extraction
+        - Exporter Daemon / Worker Pool / HTTP Scraper
+        - Multi-Target Probe (/probe) or OpenMetrics Exposition (/metrics)
+        - CLI Diagnostic Command (diag, inspect, export, query, test)
+        - Configuration, GitOps Secrets (secrets.yaml), or SIGHUP Hot Reload
+        - Prometheus 3.x Alerting Rules / Alertmanager / Grafana Integration
+        - SIEM & Structured Logging (JSON, ArcSight CEF, RFC 5424, BSD Syslog)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_functionality
+    attributes:
+      label: Proposed Functionality
+      description: >
+        Describe in detail the new feature, behavior, or Prometheus metrics (`ubnt_ap_*`,
+        `ubnt_peer_*`, `ubnt_af_*`, `ubnt_iface_*`, `ubnt_device_*`) you are proposing.
+        Include proposed metric names, Prometheus types (`Gauge`, `Counter`, `Histogram`, `Info`),
+        base units, `# HELP` descriptions, and label keys if applicable.
+      placeholder: |
+        Propose adding `ubnt_ap_...` (Gauge, unit: dBm) extracted from `wireless.radios[0]...`
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use Case & Operational Benefit
+      description: >
+        Explain how this functionality benefits WISP/telecom operators or network engineers.
+        What monitoring, alerting, or capacity-planning problem does it solve?
+    validations:
+      required: true
+  - type: textarea
+    id: json_sample
+    attributes:
+      label: Anonymized /api/v1.0/statistics JSON Snippet (Optional)
+      description: >
+        If proposing a new hardware metric or collector enhancement, paste the relevant JSON
+        fragment from `/api/v1.0/statistics` (or `ubnt-exporter inspect -f fixture.json`).
+        **IMPORTANT:** Replace all real IP addresses with RFC 1918 (`192.168.1.x`) and remove
+        sensitive hostnames or credentials before submitting.
+      render: json
+  - type: textarea
+    id: external_dependencies
+    attributes:
+      label: External Dependencies
+      description: >
+        List any new Go module dependencies (`go.mod`) or external services required by this
+        proposal. Note that `ubnt-exporter` prioritizes minimal, zero-vulnerability dependencies.
