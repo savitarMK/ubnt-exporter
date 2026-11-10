@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/badge/version-v1.2.0-blue.svg)](VERSION)
 [![Go Version](https://img.shields.io/badge/go-1.27.3-00ADD8.svg)](go.mod)
 [![Docker Image](https://img.shields.io/badge/docker-debian%3A13.7--slim-2496ED.svg)](Dockerfile)
-[![Prometheus](https://img.shields.io/badge/prometheus-3.15%20ready-E6522C.svg)](https://prometheus.io)
+[![Prometheus](https://img.shields.io/badge/prometheus-3.x%20ready-E6522C.svg)](https://prometheus.io)
 [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](LICENSE)
 
 A high-performance Prometheus exporter for Ubiquiti AirMAX (M/AC), LTU, and AirFiber wireless networking devices, written in Go.
@@ -30,7 +30,7 @@ The `ubnt-exporter` gathers operational telemetry and radio metrics from Ubiquit
 - **Worker Pool Concurrency:** Semaphore-regulated goroutine pool scaling smoothly across large inventories without socket starvation.
 - **AirOS REST Session Persistence:** Authenticates via `/api/v1.0/user/login`, reuses session tokens across cycles, and recovers transparently from expired sessions.
 - **Zero-Contention Metric Storage:** Thread-safe buffered data structures ensure non-blocking writes during high-frequency scrape cycles.
-- **OpenMetrics 2.0 & Prometheus 3.15 Ready:** Full content negotiation, Unix Domain Socket (`unix:///path.sock`) scraping, and standard `ubnt_build_info` telemetry.
+- **OpenMetrics 2.0 & Prometheus 3.x Ready:** Full content negotiation, Hybrid Native Histograms (`NativeHistogramBucketFactor: 1.1`), strict metric type/suffix compliance, Unix Domain Socket (`unix:///path.sock`) scraping, and standard `ubnt_build_info` telemetry.
 - **Universal Dynamic Label Propagation (Grafana Ready):** Arbitrary custom labels configured in `defaults.labels` and `devices[].labels` (e.g., `region`, `network`, `tower`, `sector`, `pop`, `area`, `role`) are automatically discovered and injected across **all 159 exported metrics** (System, Radio, AirFiber, Interfaces, Peers, and Scrape Status), enabling direct Grafana template variable filtering and grouping without complex PromQL `group_left` joins.
 - **Unified Non-Duplicated Collector Pipeline:** Executes `system`, `interfaces`, `wireless`, and `peers` across all Ubiquiti families while keeping `airfiber` exclusively for split-frequency TDD backhaul metrics, eliminating redundant `ubnt_af_*` series.
 - **Offline Fixture Replay & Development Engine (`-f` / `--from-file`):** Develop, inspect, and test new collector features against real captured AirMAX AC PtMP ([`testdata/fixtures/airmax_ac_ptmp.json`](testdata/fixtures/airmax_ac_ptmp.json)), AirMAX M-series PtMP ([`testdata/fixtures/airmax_m_ptmp.json`](testdata/fixtures/airmax_m_ptmp.json)), and AirFiber 5XHD PtP ([`testdata/fixtures/af5xhd_ptp.json`](testdata/fixtures/af5xhd_ptp.json)) JSON payloads without requiring live hardware connectivity or configuration files.
@@ -140,12 +140,12 @@ The exporter provides production-grade configuration and alerting templates in t
 > All configuration files and alert rule templates are organized in their own dedicated directory [`examples/`](examples/):
 > - [`examples/config.yaml.example`](examples/config.yaml.example): Radio inventory (AirMAX AC/M, LTU, AirFiber 5XHD).
 > - [`examples/system.yaml.example`](examples/system.yaml.example): Daemon runtime, timeouts, worker pools, and logging formats.
-> - [`examples/alerts.yaml.example`](examples/alerts.yaml.example): Turnkey Prometheus 3.15+ alerting rules.
+> - [`examples/alerts.yaml.example`](examples/alerts.yaml.example): Turnkey Prometheus 3.x alerting rules.
 > - [`examples/alertmanager.yaml.example`](examples/alertmanager.yaml.example): Alertmanager 0.34+ routing, Slack & Telegram templates.
 
 1. `config.yaml`: Device inventory, credentials, labels, and collector toggles (see [`examples/config.yaml.example`](examples/config.yaml.example)).
 2. `system.yaml`: Port, scrape intervals, worker limits, and logging (see [`examples/system.yaml.example`](examples/system.yaml.example)).
-3. `alerts.yaml`: Prometheus 3.15+ alerting rules for RF quality, hardware, and daemon self-health (see [`examples/alerts.yaml.example`](examples/alerts.yaml.example)).
+3. `alerts.yaml`: Prometheus 3.x alerting rules for RF quality, hardware, and daemon self-health (see [`examples/alerts.yaml.example`](examples/alerts.yaml.example)).
 4. `alertmanager.yaml`: Alertmanager 0.34+ notification routing, Slack/Telegram templates, and hierarchical inhibition (see [`examples/alertmanager.yaml.example`](examples/alertmanager.yaml.example)).
 
 ### Minimal `config.yaml`
@@ -204,18 +204,19 @@ logging:
 
 ## Internal Self-Telemetry & Observability
 
-The `ubnt-exporter` provides native operational self-monitoring adhering to Prometheus 3.15 and OpenMetrics standards. When scraping `/metrics`, the exporter serves both Ubiquiti telemetry and daemon self-observability metrics:
+The `ubnt-exporter` provides native operational self-monitoring adhering to Prometheus 3.x and OpenMetrics standards (including Hybrid Native Histograms). When scraping `/metrics`, the exporter serves both Ubiquiti telemetry and daemon self-observability metrics:
 
 | Metric Name | Type | Description |
 | :--- | :--- | :--- |
-| `ubnt_exporter_collector_duration_seconds` | Histogram | Latency histogram for each collector module (`system`, `interfaces`, `wireless`, `airfiber`, `peers`). |
+| `ubnt_scrape_duration_seconds` | Histogram (Native + Classic) | Scrape latency distribution per target device (`name`, `ip`). |
+| `ubnt_exporter_collector_duration_seconds` | Histogram (Native + Classic) | Latency histogram for each collector module (`system`, `interfaces`, `wireless`, `airfiber`, `peers`). |
 | `ubnt_exporter_collector_success` | Gauge | Status of the most recent collector execution (`1` = success, `0` = failure or caught panic). |
 | `ubnt_exporter_collector_executions_total` | Counter | Cumulative executions partitioned by `collector` and `status` (`success`, `error`). |
 | `ubnt_exporter_scrape_requests_total` | Counter | Scrape attempts partitioned by result (`success`, `timeout`, `conn_error`, `auth_error`, `http_error`, `decode_error`). |
 | `ubnt_exporter_scrape_cycle_duration_seconds` | Gauge | Execution time of the most recent inventory scrape cycle in seconds. |
 | `ubnt_exporter_last_scrape_timestamp_seconds` | Gauge | Unix timestamp of the last completed scrape cycle. |
-| `ubnt_exporter_devices_configured_total` | Gauge | Total target devices defined in `config.yaml`. |
-| `ubnt_exporter_devices_online_total` | Gauge | Number of devices responding successfully in the current cycle. |
+| `ubnt_exporter_devices_configured` | Gauge | Number of target devices defined in `config.yaml`. |
+| `ubnt_exporter_devices_online` | Gauge | Number of devices responding successfully in the current cycle. |
 | `go_*` / `process_*` | Various | Standard Go runtime memory, GC pauses, goroutine count, and process CPU/RSS metrics. |
 
 For PromQL alert examples and dashboard queries, see the [Prometheus Integration Guide](docs/exporter.md#exporter-internal-telemetry).

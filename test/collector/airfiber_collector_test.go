@@ -426,8 +426,17 @@ func TestProcessAF5XHD_RealPayload_v155(t *testing.T) {
 	}
 
 	// 4. Local & Remote GPS and NTP
-	if sink.metrics["device_gps_dim"] != 3.0 {
-		t.Errorf("expected device_gps_dim 3.0, got %v", sink.metrics["device_gps_dim"])
+	if sink.metrics["ap_gps_dim"] != 3.0 {
+		t.Errorf("expected ap_gps_dim 3.0, got %v", sink.metrics["ap_gps_dim"])
+	}
+	if sink.metrics["ap_gps_sats"] != 15.0 {
+		t.Errorf("expected ap_gps_sats 15.0, got %v", sink.metrics["ap_gps_sats"])
+	}
+	if sink.metrics["ap_gps_alt"] != 1315.0 {
+		t.Errorf("expected ap_gps_alt 1315.0, got %v", sink.metrics["ap_gps_alt"])
+	}
+	if sink.metrics["ap_gps_dop"] != 0.81 {
+		t.Errorf("expected ap_gps_dop 0.81, got %v", sink.metrics["ap_gps_dop"])
 	}
 	if sink.metrics["device_ntp_sync_enabled"] != 1.0 {
 		t.Errorf("expected device_ntp_sync_enabled 1.0, got %v", sink.metrics["device_ntp_sync_enabled"])

@@ -395,7 +395,7 @@ Prometheus can scrape Unix Domain Sockets directly using the `http_sd_configs` o
 > All configuration and alerting templates are maintained in the dedicated [`examples/`](../examples/) directory:
 > - [`examples/config.yaml.example`](../examples/config.yaml.example): Radio inventory, credentials, labels, and module toggles.
 > - [`examples/system.yaml.example`](../examples/system.yaml.example): Server endpoints, timeouts, worker pool, and logging formats.
-> - [`examples/alerts.yaml.example`](../examples/alerts.yaml.example): Prometheus 3.15+ alerting rules.
+> - [`examples/alerts.yaml.example`](../examples/alerts.yaml.example): Prometheus 3.x alerting rules.
 > - [`examples/alertmanager.yaml.example`](../examples/alertmanager.yaml.example): Alertmanager 0.34+ notification routing and templates.
 
 ---

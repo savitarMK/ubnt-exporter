@@ -317,7 +317,7 @@ func CmdInspect(sysConf *config.SystemConfig, invConf *config.InventoryConfig, t
 				groups["2. Network Interfaces & VLANs"] = append(groups["2. Network Interfaces & VLANs"], line)
 			case strings.HasPrefix(name, "ubnt_peer_"):
 				groups["4. Connected Peers & Stations"] = append(groups["4. Connected Peers & Stations"], line)
-			case strings.HasPrefix(name, "ubnt_device_") || strings.HasPrefix(name, "ubnt_af_gps_") ||
+			case strings.HasPrefix(name, "ubnt_device_") || strings.HasPrefix(name, "ubnt_ram_") ||
 				strings.HasPrefix(name, "ubnt_ap_cpu_") || strings.HasPrefix(name, "ubnt_ap_ram_") ||
 				strings.HasPrefix(name, "ubnt_ap_uptime_") || strings.HasPrefix(name, "ubnt_ap_gps_") ||
 				strings.HasPrefix(name, "ubnt_ap_latitude") || strings.HasPrefix(name, "ubnt_ap_longitude"):

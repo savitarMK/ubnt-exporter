@@ -4,6 +4,7 @@ package metrics
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"ubnt-exporter/internal/definitions"
@@ -84,6 +85,7 @@ func NewStore() *Store {
 		def := definitions.MetricDefinition{
 			Type:   v.Type,
 			Name:   v.Name,
+			Unit:   v.Unit,
 			Help:   v.Help,
 			Labels: lbls,
 		}
@@ -93,9 +95,12 @@ func NewStore() *Store {
 
 	hist := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "ubnt_scrape_duration_seconds",
-			Help:    "Time taken to scrape the device (latency distribution)",
-			Buckets: []float64{0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
+			Name:                            "ubnt_scrape_duration_seconds",
+			Help:                            "Duration of the target device HTTP scrape and metric collection in seconds.",
+			Buckets:                         []float64{0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: time.Hour,
 		},
 		[]string{"name", "ip"},
 	)

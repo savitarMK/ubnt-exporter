@@ -95,8 +95,11 @@ func TestMetricsDefinitionsIntegrity(t *testing.T) {
 		"peer_rx_rate_bps",
 		"peer_mcs_rx_packets",
 		"peer_remote_mcs_rx_packets",
-		"device_gps_dim",
-		"device_gps_time_sync",
+		"ap_gps_sats",
+		"ap_gps_alt",
+		"ap_gps_dop",
+		"ap_gps_dim",
+		"ap_gps_time_sync",
 		"device_ntp_sync_enabled",
 		"device_ntp_last_sync",
 		"peer_gps_alt",
@@ -107,6 +110,40 @@ func TestMetricsDefinitionsIntegrity(t *testing.T) {
 		"peer_ntp_sync_enabled",
 		"peer_ntp_last_sync",
 		"peer_remote_rx_efficiency",
+	}
+
+	seenNames := make(map[string]string, len(definitions.MetricsDef))
+	for key, def := range definitions.MetricsDef {
+		if prevKey, dup := seenNames[def.Name]; dup {
+			t.Errorf("duplicate Prometheus metric Name %q shared by keys %q and %q", def.Name, prevKey, key)
+		}
+		seenNames[def.Name] = key
+
+		if !strings.HasPrefix(def.Name, "ubnt_") {
+			t.Errorf("metric %q Name does not have 'ubnt_' prefix: %s", key, def.Name)
+		}
+		if len(strings.TrimSpace(def.Help)) < 20 || !strings.HasSuffix(def.Help, ".") {
+			t.Errorf("metric %q (%s) must have a descriptive Help sentence (>=20 chars ending with '.'): %q", key, def.Name, def.Help)
+		}
+		if def.Type == definitions.TypeCounter && !strings.HasSuffix(def.Name, "_total") {
+			t.Errorf("counter metric %q (%s) must end with '_total'", key, def.Name)
+		}
+		if def.Type != definitions.TypeCounter && strings.HasSuffix(def.Name, "_total") {
+			t.Errorf("non-counter metric %q (%s, type=%s) must not end with '_total'", key, def.Name, def.Type)
+		}
+		if def.Type == definitions.TypeInfo && !strings.HasSuffix(def.Name, "_info") {
+			t.Errorf("info metric %q (%s) must end with '_info'", key, def.Name)
+		}
+	}
+
+	if definitions.MetricsDef["ap_clients"].Name != "ubnt_ap_connected_clients" {
+		t.Errorf("expected ap_clients Name 'ubnt_ap_connected_clients', got %q", definitions.MetricsDef["ap_clients"].Name)
+	}
+	if definitions.MetricsDef["peer_cpu"].Name != "ubnt_peer_cpu_usage_percent" {
+		t.Errorf("expected peer_cpu Name 'ubnt_peer_cpu_usage_percent', got %q", definitions.MetricsDef["peer_cpu"].Name)
+	}
+	if definitions.MetricsDef["peer_ram"].Name != "ubnt_peer_ram_usage_percent" {
+		t.Errorf("expected peer_ram Name 'ubnt_peer_ram_usage_percent', got %q", definitions.MetricsDef["peer_ram"].Name)
 	}
 
 	for _, req := range requiredMetrics {

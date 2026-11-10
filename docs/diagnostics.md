@@ -33,7 +33,7 @@ The `ubnt-exporter` provides built-in diagnostic commands and structured logging
 > All configuration files and alert rule templates are organized in the dedicated [`examples/`](../examples/) directory:
 > - [`examples/config.yaml.example`](../examples/config.yaml.example): Radio inventory and credentials.
 > - [`examples/system.yaml.example`](../examples/system.yaml.example): Daemon runtime, timeouts, and logging formats.
-> - [`examples/alerts.yaml.example`](../examples/alerts.yaml.example): Production Prometheus 3.15+ alert rules.
+> - [`examples/alerts.yaml.example`](../examples/alerts.yaml.example): Production Prometheus 3.x alert rules.
 > - [`examples/alertmanager.yaml.example`](../examples/alertmanager.yaml.example): Alertmanager 0.34+ routing and templates.
 
 ---
@@ -368,7 +368,7 @@ AirMAX and AirFiber hardware communicate with tower switches over gigabit Ethern
 
 AirFiber radios depend on GPS satellite timing to synchronize TDD frame transmit and receive intervals with adjacent towers:
 
-- `ubnt_af_gps_satellites`: Should track $\ge 4$ satellites for a valid 3D position and timing fix.
+- `ubnt_ap_gps_satellites`: Should track $\ge 4$ satellites for a valid 3D position and timing fix.
 - `ubnt_af_gps_sync_status`: Value `1` confirms active TDD synchronization; `0` indicates the radio has lost sync and fallen back to free-running mode, which can cause self-interference with collocated radios.
 
 ### DFS Radar CAC and Lockout Timers

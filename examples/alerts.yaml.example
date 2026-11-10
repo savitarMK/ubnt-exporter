@@ -1,5 +1,5 @@
 # Example Prometheus alerting rules for Ubiquiti AirMAX, LTU, and AirFiber networks
-# Compatible with Prometheus 3.15+ and Alertmanager 0.34+
+# Compatible with Prometheus 3.x and Alertmanager 0.34+
 
 groups:
   # =========================================================================
@@ -179,7 +179,7 @@ groups:
           runbook_url: "docs/exporter.md#exporter-internal-telemetry"
 
       - alert: UbntExporterLowFleetAvailability
-        expr: (ubnt_exporter_devices_online_total / ubnt_exporter_devices_configured_total) * 100 < 80
+        expr: (ubnt_exporter_devices_online / ubnt_exporter_devices_configured) * 100 < 80
         for: 10m
         labels:
           severity: warning
