@@ -221,7 +221,7 @@ Shared across both AirMAX (M/AC) and AirFiber / LTU radios:
 | `ubnt_ap_dfs_status` | Gauge | State | Dynamic Frequency Selection status (`0` = normal, `1` = CAC scanning). |
 | `ubnt_ap_dfs_cac_duration_seconds` | Gauge | Seconds | Total configured DFS Channel Availability Check (CAC) scan duration in seconds. |
 | `ubnt_ap_dfs_cac_rem_seconds` | Gauge | Seconds | DFS Channel Availability Check remaining countdown timer. |
-| `ubnt_ap_dfs_lockout_count` | Gauge | Count | Number of DFS frequencies locked out due to radar detection. |
+| `ubnt_ap_dfs_lockouts` | Gauge | Count | Number of DFS frequencies locked out due to radar detection. |
 
 ### Connected Station / Peer Metrics
 
@@ -295,7 +295,7 @@ Common system (`ubnt_device_*`, `ubnt_ap_cpu_*`, `ubnt_ap_ram_*`), wireless (`ub
 | `ubnt_af_frequency_rx_mhz` | Gauge | MHz | Configured receive frequency in MHz for split-frequency operation. |
 | `ubnt_af_channel_width_rx_mhz` | Gauge | MHz | Configured receive channel bandwidth in MHz for split-bandwidth operation. |
 | `ubnt_af_duty_cycle_dl_percent` | Gauge | Percent | TDD downlink/uplink split ratio percentage (`dlRatio`, e.g. `50`, `67`, `75`). |
-| `ubnt_af_frame_length_ms` | Gauge | ms | TDD radio frame duration in milliseconds (e.g. `2.0`, `2.5`, `5.0`). |
+| `ubnt_af_frame_length_seconds` | Gauge | Seconds | TDD radio frame duration in seconds (e.g. `0.002`, `0.0025`, `0.005` for 2 / 2.5 / 5 ms frames). |
 | `ubnt_af_gps_sync_status` | Gauge | State | Local radio GPS TDD synchronization status (`1` = synchronized, `0` = free-run). |
 | `ubnt_af_rx_efficiency_percent` | Gauge | Percent | Realized local radio frame reception efficiency percentage. |
 | `ubnt_af_local_autopower_state` | Gauge | Flag | Local automatic transmit power control active (`1` = enabled, `0` = disabled). |

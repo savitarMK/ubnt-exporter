@@ -380,7 +380,7 @@ When operating in Dynamic Frequency Selection (DFS) bands (5.3 GHz and 5.4 GHz) 
 - `ubnt_ap_dfs_status`: Value `1` indicates Channel Availability Check (CAC) is currently scanning the channel before transmission can begin.
 - `ubnt_ap_dfs_cac_duration_seconds`: Configured total CAC scan duration in seconds.
 - `ubnt_ap_dfs_cac_rem_seconds`: Shows the remaining CAC countdown timer in seconds (typically 60 to 600 seconds).
-- `ubnt_ap_dfs_lockout_count`: Number of frequencies currently locked out due to radar energy detection during the mandatory 30-minute non-occupancy period.
+- `ubnt_ap_dfs_lockouts`: Number of frequencies currently locked out due to radar energy detection during the mandatory 30-minute non-occupancy period.
 
 ---
 

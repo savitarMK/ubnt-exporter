@@ -32,6 +32,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses 
 
 - **`[CHANGE]` New `peer_mac` identity label on all `ubnt_peer_*` metrics** (breaking label-set change): Station series were identified only by `peer_name` + `peer_ip`; CPEs without hostname/management IP (reported as `Unknown`) or with duplicated values collapsed into a single series, silently overwriting each other. All 81 per-station metrics (including `ubnt_peer_mcs_rx_packets_total` / `ubnt_peer_remote_mcs_rx_packets_total`) now carry `peer_mac` (lower-case). `ubnt_peer_static_info` keeps `peer_mac`, now normalized to lower-case and set to `unknown-<index>` instead of `Unknown` when the station reports no MAC. Queries aggregating by `peer_name` keep working; dashboards or recording rules matching the exact label set may need updating, and existing station series are replaced by new ones after upgrade (`internal/definitions/definitions.go`, `internal/collector/peers.go`).
 
+- **`[CHANGE]` Metric renames for Prometheus naming conventions** (flagged by `promtool check metrics`):
+  - `ubnt_ap_dfs_lockout_count` → `ubnt_ap_dfs_lockouts` (the `_count` suffix is reserved for histograms and summaries).
+  - `ubnt_af_frame_length_ms` → `ubnt_af_frame_length_seconds`, now in base units: the device-reported milliseconds are divided by 1000 (2.5 ms → `0.0025`). Update dashboards that displayed the raw millisecond value.
+  - All 170 exposed metric families now pass `promtool check metrics` without warnings.
+
 ### Fixed
 
 - **`[BUGFIX]` `server.port` ignored when `server.listen` is omitted**: The built-in `listen: "0.0.0.0:8000"` default was pre-seeded before decoding `system.yaml`, so a file setting only `port: 9100` still bound to `:8000`. `listen` is now derived from `port` when absent (`internal/config/config.go`).

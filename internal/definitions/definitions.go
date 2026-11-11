@@ -619,9 +619,9 @@ var MetricsDef = map[string]MetricDefinition{
 	},
 	"af_frame_length": {
 		Type:   TypeGauge,
-		Name:   "ubnt_af_frame_length_ms",
-		Unit:   "ms",
-		Help:   "AirFiber configured TDD radio frame duration in milliseconds.",
+		Name:   "ubnt_af_frame_length_seconds",
+		Unit:   "seconds",
+		Help:   "AirFiber configured TDD radio frame duration in seconds (device reports milliseconds, e.g. 2.5 ms = 0.0025).",
 		Labels: []string{"name", "ip"},
 	},
 	"af_gps_sync_state": {
@@ -717,7 +717,7 @@ var MetricsDef = map[string]MetricDefinition{
 	},
 	"ap_dfs_lockout_count": {
 		Type:   TypeGauge,
-		Name:   "ubnt_ap_dfs_lockout_count",
+		Name:   "ubnt_ap_dfs_lockouts",
 		Unit:   "channels",
 		Help:   "Number of DFS frequencies currently locked out due to radar detection on the local AP.",
 		Labels: []string{"name", "ip"},
