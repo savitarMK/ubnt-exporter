@@ -1,4 +1,4 @@
-ARG APP_VERSION=1.3.0
+ARG APP_VERSION=2.0.0
 
 FROM --platform=$BUILDPLATFORM golang:1.27.4-bookworm AS builder
 
@@ -36,7 +36,7 @@ RUN mkdir -p /rootfs/app/logs /rootfs/conf
 # Pinned by multi-arch index digest; Dependabot (docker ecosystem) keeps it current.
 FROM gcr.io/distroless/static-debian13@sha256:448810357cc8e67b7208988abdba0f5ec3d3aebee0a5b13eb624979792cffc0f AS runner
 
-ARG APP_VERSION=1.3.0
+ARG APP_VERSION=2.0.0
 
 LABEL org.opencontainers.image.title="ubnt-exporter" \
       org.opencontainers.image.description="Prometheus exporter for Ubiquiti AirMAX (M/AC), LTU, and AirFiber devices" \

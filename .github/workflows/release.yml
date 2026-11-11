@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Version tag to build (e.g., v1.3.0)'
+        description: 'Version tag to build (e.g., v2.0.0)'
         required: false
-        default: 'v1.3.0'
+        default: 'v2.0.0'
 
 permissions:
   contents: write
@@ -160,7 +160,7 @@ jobs:
           python3 - << 'EOF'
           import datetime, os, re, subprocess
 
-          tag = os.environ.get("GITHUB_REF_NAME", "v1.3.0")
+          tag = os.environ.get("GITHUB_REF_NAME", "v2.0.0")
           today = datetime.date.today().isoformat()
           changelog_path = "CHANGELOG.md"
 

@@ -1,6 +1,6 @@
 # ubnt-exporter
 
-[![Release](https://img.shields.io/badge/version-v1.3.0-blue.svg)](VERSION)
+[![Release](https://img.shields.io/badge/version-v2.0.0-blue.svg)](VERSION)
 [![Go Version](https://img.shields.io/badge/go-1.27.4-00ADD8.svg)](go.mod)
 [![Docker Image](https://img.shields.io/badge/docker-distroless%2Fstatic--debian13-2496ED.svg)](Dockerfile)
 [![Prometheus](https://img.shields.io/badge/prometheus-3.x%20ready-E6522C.svg)](https://prometheus.io)
@@ -235,7 +235,7 @@ Flags can be specified in any order (before or after the command):
 | `--regex <pattern>` | `-r` | — | Filter metrics or log lines using semantic presets or RE2 patterns. |
 | `--from-file <path>` | `-f` | — | Replay an offline JSON statistics fixture (`--fixture`) without live network I/O. |
 | `--lines <int>` | `-n` | `50` | Number of historical log lines to display in `logs tail`. |
-| `--version` | `-v` | — | Print exporter version (`1.3.0`) and exit. |
+| `--version` | `-v` | — | Print exporter version (`2.0.0`) and exit. |
 | `--log` | `-log` | — | Display the logging reference manual and exit. |
 | `--help` | `-h` | — | Show contextual help for the application or any subcommand. |
 

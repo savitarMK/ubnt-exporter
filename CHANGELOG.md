@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses explicit Prometheus release classification tags (`[CHANGE]`, `[FEATURE]`, `[ENHANCEMENT]`, `[PERF]`, `[BUGFIX]`).
 
+## [v2.0.0] - 2026-11-11
+
+### Changed
+
+- **`[CHANGE]` Codebase cleanup**: Removed redundant and noisy comments across the Go codebase (`cli/`, `internal/`, and `test/`), preserving official Go documentation docstrings on exported symbols, RFC architectural context, and compiler directives (`//go:debug`, `// #nosec`, `//nolint`).
+- **`[CHANGE]` Prometheus 3.x and OpenMetrics 2.0 readiness**: Established full compliance across metrics schema, hybrid native histograms, strict OpenMetrics counter suffix conventions, and unified metadata definitions.
+
 ## [v1.3.0] - 2026-11-10
 
 > **Upgrade note:** all `ubnt_peer_*` metrics gain the `peer_mac` label (see *Changed*). Review dashboards and recording rules that match the exact peer label set.
