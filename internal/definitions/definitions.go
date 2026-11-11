@@ -3,7 +3,7 @@ package definitions
 
 var (
 	// VERSION defines the application version, which can be overridden via -ldflags -X.
-	VERSION = "1.2.0"
+	VERSION = "1.3.0"
 	// Revision holds the git commit hash injected during compilation.
 	Revision = "unknown"
 	// Branch holds the git branch name injected during compilation.

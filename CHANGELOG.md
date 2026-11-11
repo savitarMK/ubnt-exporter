@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses explicit Prometheus release classification tags (`[CHANGE]`, `[FEATURE]`, `[ENHANCEMENT]`, `[PERF]`, `[BUGFIX]`).
 
-## [Unreleased]
+## [v1.3.0] - 2026-11-10
+
+> **Upgrade note:** all `ubnt_peer_*` metrics gain the `peer_mac` label (see *Changed*). Review dashboards and recording rules that match the exact peer label set.
 
 ### Security
 
@@ -28,7 +30,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses 
 
 - **`[CHANGE]` Container `HEALTHCHECK` uses `ubnt-exporter health`**: Previously `curl -f http://localhost:8000/metrics`, which ran a full metric collection every 30s and reported the container unhealthy whenever `server.port`/`server.listen` differed from `8000` or only a Unix socket was configured.
 
-- **`[CHANGE]` New `peer_mac` identity label on all `ubnt_peer_*` metrics** (breaking label-set change): Station series were identified only by `peer_name` + `peer_ip`; CPEs without hostname/management IP (reported as `Unknown`) or with duplicated values collapsed into a single series, silently overwriting each other. All 81 per-station metrics (including `ubnt_peer_mcs_rx_packets` / `ubnt_peer_remote_mcs_rx_packets`) now carry `peer_mac` (lower-case). `ubnt_peer_static_info` keeps `peer_mac`, now normalized to lower-case and set to `unknown-<index>` instead of `Unknown` when the station reports no MAC. Queries aggregating by `peer_name` keep working; dashboards or recording rules matching the exact label set may need updating, and existing station series are replaced by new ones after upgrade (`internal/definitions/definitions.go`, `internal/collector/peers.go`).
+- **`[CHANGE]` New `peer_mac` identity label on all `ubnt_peer_*` metrics** (breaking label-set change): Station series were identified only by `peer_name` + `peer_ip`; CPEs without hostname/management IP (reported as `Unknown`) or with duplicated values collapsed into a single series, silently overwriting each other. All 81 per-station metrics (including `ubnt_peer_mcs_rx_packets_total` / `ubnt_peer_remote_mcs_rx_packets_total`) now carry `peer_mac` (lower-case). `ubnt_peer_static_info` keeps `peer_mac`, now normalized to lower-case and set to `unknown-<index>` instead of `Unknown` when the station reports no MAC. Queries aggregating by `peer_name` keep working; dashboards or recording rules matching the exact label set may need updating, and existing station series are replaced by new ones after upgrade (`internal/definitions/definitions.go`, `internal/collector/peers.go`).
 
 ### Fixed
 

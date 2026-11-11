@@ -1,6 +1,6 @@
 # ubnt-exporter
 
-[![Release](https://img.shields.io/badge/version-v1.2.0-blue.svg)](VERSION)
+[![Release](https://img.shields.io/badge/version-v1.3.0-blue.svg)](VERSION)
 [![Go Version](https://img.shields.io/badge/go-1.27.4-00ADD8.svg)](go.mod)
 [![Docker Image](https://img.shields.io/badge/docker-debian%3A13.7--slim-2496ED.svg)](Dockerfile)
 [![Prometheus](https://img.shields.io/badge/prometheus-3.x%20ready-E6522C.svg)](https://prometheus.io)
@@ -211,6 +211,7 @@ The `ubnt-exporter` provides native operational self-monitoring adhering to Prom
 | `ubnt_exporter_last_scrape_timestamp_seconds` | Gauge | Unix timestamp of the last completed scrape cycle. |
 | `ubnt_exporter_devices_configured` | Gauge | Number of target devices defined in `config.yaml`. |
 | `ubnt_exporter_devices_online` | Gauge | Number of devices responding successfully in the current cycle. |
+| `ubnt_exporter_metric_emit_errors_total` | Counter | Stored series dropped from the scrape because they could not be exposed (e.g. invalid UTF-8 label values). |
 | `go_*` / `process_*` | Various | Standard Go runtime memory, GC pauses, goroutine count, and process CPU/RSS metrics. |
 
 For PromQL alert examples and dashboard queries, see the [Prometheus Integration Guide](docs/exporter.md#exporter-internal-telemetry).
@@ -234,7 +235,7 @@ Flags can be specified in any order (before or after the command):
 | `--regex <pattern>` | `-r` | — | Filter metrics or log lines using semantic presets or RE2 patterns. |
 | `--from-file <path>` | `-f` | — | Replay an offline JSON statistics fixture (`--fixture`) without live network I/O. |
 | `--lines <int>` | `-n` | `50` | Number of historical log lines to display in `logs tail`. |
-| `--version` | `-v` | — | Print exporter version (`1.2.0`) and exit. |
+| `--version` | `-v` | — | Print exporter version (`1.3.0`) and exit. |
 | `--log` | `-log` | — | Display the logging reference manual and exit. |
 | `--help` | `-h` | — | Show contextual help for the application or any subcommand. |
 

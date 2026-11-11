@@ -9,7 +9,7 @@ body:
     attributes:
       label: ubnt-exporter Version
       description: What version of `ubnt-exporter` are you running? (Run `ubnt-exporter -v`)
-      placeholder: "v1.2.0"
+      placeholder: "v1.3.0"
     validations:
       required: true
   - type: dropdown

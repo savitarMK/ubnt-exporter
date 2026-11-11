@@ -336,6 +336,7 @@ The exporter exposes detailed self-observability and internal telemetry metrics 
 | `ubnt_exporter_last_scrape_timestamp_seconds` | Gauge | Timestamp | Unix epoch timestamp of the most recent completed scrape cycle. |
 | `ubnt_exporter_devices_configured` | Gauge | Count | Number of target Ubiquiti devices declared in `config.yaml`. |
 | `ubnt_exporter_devices_online` | Gauge | Count | Number of devices responding successfully in the current scrape cycle. |
+| `ubnt_exporter_metric_emit_errors_total` | Counter | Count | Stored series dropped from the scrape because they could not be exposed (e.g. invalid UTF-8 label values). |
 | `go_*` / `process_*` | Various | Various | Standard Go runtime and process metrics (memory allocations, goroutines, GC latency, CPU seconds, open file descriptors). |
 
 #### Exporter Operational PromQL Queries
@@ -616,7 +617,7 @@ inhibit_rules:
 
 ### Slack Notification Receiver (Flapping Mitigation)
 
-In Alertmanager v0.32+, enabling `edit_existing_messages: true` prevents message spam when wireless links experience transient rain fade or RF fluctuations. Rather than emitting new chat notifications on each state transition, Alertmanager modifies the existing message thread in place.
+Enabling `update_message: true` prevents message spam when wireless links experience transient rain fade or RF fluctuations: rather than emitting new chat notifications on each state transition, Alertmanager edits the existing message in place. Message editing requires a Slack **bot token** and the `chat.postMessage` API (`api_url: https://slack.com/api/chat.postMessage`); incoming webhooks cannot edit messages. Validated with `amtool check-config` (Alertmanager 0.35).
 
 ```yaml
 receivers:
@@ -624,7 +625,11 @@ receivers:
     slack_configs:
       - channel: "#noc-wireless-alerts"
         send_resolved: true
-        edit_existing_messages: true
+        api_url: "https://slack.com/api/chat.postMessage"
+        http_config:
+          authorization:
+            credentials_file: "/etc/alertmanager/secrets/slack_bot_token"
+        update_message: true
         icon_emoji: ""
         title: |-
           [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }} (Tower: {{ .CommonLabels.tower | default "N/A" }})
@@ -679,7 +684,11 @@ receivers:
     slack_configs:
       - channel: "#monitoring-sre"
         send_resolved: true
-        edit_existing_messages: true
+        api_url: "https://slack.com/api/chat.postMessage"
+        http_config:
+          authorization:
+            credentials_file: "/etc/alertmanager/secrets/slack_bot_token"
+        update_message: true
         title: |-
           [EXPORTER {{ .Status | toUpper }}] {{ .CommonLabels.alertname }}
         text: |-
