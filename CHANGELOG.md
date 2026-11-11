@@ -15,6 +15,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses 
 
 - **`[BUGFIX]` `server.port` ignored when `server.listen` is omitted**: The built-in `listen: "0.0.0.0:8000"` default was pre-seeded before decoding `system.yaml`, so a file setting only `port: 9100` still bound to `:8000`. `listen` is now derived from `port` when absent (`internal/config/config.go`).
 - **`[BUGFIX]` Enabling a single non-CEF log format failed validation**: The CEF default was pre-seeded before decoding, so `formats: { json: true }` resulted in two active formats and a *"multiple logging formats enabled"* error. CEF is now applied only when no format is enabled.
+- **`[BUGFIX]` IPv6 devices could never be scraped**: The device base URL was built as `http://fd00::1/api/v1.0` (invalid). IPv6 literals are now bracketed (`http://[fd00::1]/api/v1.0`, RFC 3986). Leading/trailing whitespace in `ip` (accepted by validation) is also trimmed before building the URL and the `ip`/`name` labels (`internal/scraper/device.go`).
 
 ## [v1.2.0] - 2026-11-10
 

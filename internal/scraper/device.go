@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,9 +67,11 @@ func NewDeviceScraper(
 		password = os.Getenv("UBNT_PASSWORD")
 	}
 
+	ip := strings.TrimSpace(dev.IP)
+
 	name := dev.Name
 	if name == "" {
-		name = dev.IP
+		name = ip
 	}
 
 	useSSL := defaults.SSL
@@ -80,7 +83,7 @@ func NewDeviceScraper(
 	if useSSL {
 		protocol = "https"
 	}
-	baseURL := fmt.Sprintf("%s://%s/api/v1.0", protocol, dev.IP)
+	baseURL := fmt.Sprintf("%s://%s/api/v1.0", protocol, urlHost(ip))
 
 	// Inherit default labels and merge with device-level overrides
 	mergedLabels := make(map[string]string, len(defaults.Labels)+len(dev.Labels))
@@ -122,7 +125,7 @@ func NewDeviceScraper(
 
 	return &DeviceScraper{
 		Name:           name,
-		IP:             dev.IP,
+		IP:             ip,
 		Username:       username,
 		Password:       password,
 		SSL:            useSSL,
@@ -135,6 +138,16 @@ func NewDeviceScraper(
 		TimeoutSocket:  time.Duration(socketTimeout) * time.Second,
 		BackoffTime:    time.Duration(failureBackoff) * time.Second,
 	}
+}
+
+// urlHost returns the host portion of a device URL, wrapping IPv6 literals in brackets
+// (RFC 3986 §3.2.2) so that "fd00::1" becomes "[fd00::1]" instead of producing an invalid URL.
+// Anything that is not a bare IPv6 literal (IPv4, hostname, "host:port") is returned unchanged.
+func urlHost(ip string) string {
+	if strings.Contains(ip, ":") && net.ParseIP(ip) != nil {
+		return "[" + ip + "]"
+	}
+	return ip
 }
 
 // NewHTTPClient creates an HTTP client configured with high-capacity connection pooling for large inventories.
