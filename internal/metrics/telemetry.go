@@ -21,6 +21,7 @@ type ExporterTelemetry struct {
 	LastScrapeTimestamp prometheus.Gauge
 	DevicesConfigured   prometheus.Gauge
 	DevicesOnline       prometheus.Gauge
+	MetricEmitErrors    prometheus.Counter
 }
 
 var defaultTelemetry *ExporterTelemetry
@@ -79,6 +80,12 @@ func NewExporterTelemetry() *ExporterTelemetry {
 				Help: "Number of target Ubiquiti devices configured in the inventory.",
 			},
 		),
+		MetricEmitErrors: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "ubnt_exporter_metric_emit_errors_total",
+				Help: "Total number of stored series that could not be exposed (e.g. invalid UTF-8 label values) and were dropped from the scrape.",
+			},
+		),
 		DevicesOnline: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "ubnt_exporter_devices_online",
@@ -117,6 +124,7 @@ func (t *ExporterTelemetry) Register(reg prometheus.Registerer) {
 		t.LastScrapeTimestamp,
 		t.DevicesConfigured,
 		t.DevicesOnline,
+		t.MetricEmitErrors,
 	)
 }
 

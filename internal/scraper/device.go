@@ -404,19 +404,19 @@ func (d *DeviceScraper) processData(ctx context.Context, data any, store *metric
 	buf.UpdateMetric("device_info", deviceLabels, 1.0)
 
 	if collector.IsCollectorEnabled(d.EnabledModules, "system") {
-		collector.RunCollectorTimed("system", func() {
+		collector.RunCollectorTimedContext(ctx, d.Name, "system", func() {
 			collector.ProcessSystem(ctx, root, deviceLabels, buf)
 		})
 	}
 
 	if collector.IsCollectorEnabled(d.EnabledModules, "interfaces") {
-		collector.RunCollectorTimed("interfaces", func() {
+		collector.RunCollectorTimedContext(ctx, d.Name, "interfaces", func() {
 			collector.ProcessInterfaces(ctx, root, deviceLabels, buf)
 		})
 	}
 
 	if collector.IsCollectorEnabled(d.EnabledModules, "peers") {
-		collector.RunCollectorTimed("peers", func() {
+		collector.RunCollectorTimedContext(ctx, d.Name, "peers", func() {
 			collector.ProcessPeers(ctx, root, deviceLabels, buf)
 		})
 	}

@@ -268,7 +268,7 @@ func Execute(args []string) int {
 
 	switch opts.Command {
 	case "check":
-		return CmdCheck(sysConf, sysErr, invConf, invErr)
+		return CmdCheckWithWarnings(sysConf, sysErr, invConf, invErr, ConfigWarnings(opts.ConfigPath, opts.SystemPath))
 	case "reload":
 		return CmdReload(opts.ConfigPath, opts.SystemPath, sysConf, sysErr, invConf, invErr)
 	case "logs":

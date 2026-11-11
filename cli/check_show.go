@@ -14,8 +14,31 @@ import (
 	"ubnt-exporter/internal/config"
 )
 
+// ConfigWarnings returns non-fatal findings for the given configuration files, such as unknown
+// (ignored) keys that usually indicate a typo.
+func ConfigWarnings(configPath, systemPath string) []string {
+	return append(config.UnknownSystemFields(systemPath), config.UnknownInventoryFields(configPath)...)
+}
+
+func printConfigWarnings(warnings []string) {
+	if len(warnings) == 0 {
+		return
+	}
+	fmt.Printf("\nWARNINGS (%d):\n", len(warnings))
+	for _, w := range warnings {
+		fmt.Printf(" - %s\n", w)
+	}
+}
+
 // CmdCheck validates system.yaml and config.yaml and prints a diagnostic report.
 func CmdCheck(sysConf *config.SystemConfig, sysErr error, invConf *config.InventoryConfig, invErr error) int {
+	return CmdCheckWithWarnings(sysConf, sysErr, invConf, invErr, nil)
+}
+
+// CmdCheckWithWarnings is CmdCheck plus a report of non-fatal warnings (see ConfigWarnings).
+// Warnings never change the exit code.
+func CmdCheckWithWarnings(sysConf *config.SystemConfig, sysErr error, invConf *config.InventoryConfig, invErr error, warnings []string) int {
+	defer printConfigWarnings(warnings)
 	fmt.Println("\n CONFIGURATION VALIDATION")
 	fmt.Println("==============================")
 
@@ -149,7 +172,7 @@ func CmdReload(configPath, systemPath string, sysConf *config.SystemConfig, sysE
 	fmt.Println("==========================================")
 	fmt.Printf("Target Files: %s | %s\n", configPath, systemPath)
 
-	if code := CmdCheck(sysConf, sysErr, invConf, invErr); code != 0 {
+	if code := CmdCheckWithWarnings(sysConf, sysErr, invConf, invErr, ConfigWarnings(configPath, systemPath)); code != 0 {
 		fmt.Println("\nABORTED: Fix configuration errors before reloading the daemon.")
 		return code
 	}

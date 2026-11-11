@@ -82,6 +82,10 @@ func CmdRunContext(parentCtx context.Context, reloadTrigger <-chan struct{}, con
 		return
 	}
 
+	for _, w := range ConfigWarnings(configPath, systemPath) {
+		logger.Warn("main", "Configuration warning: %s", w)
+	}
+
 	var stateMu sync.RWMutex
 	dynamicKeys := config.DiscoverCustomLabels(invConf)
 	store := metrics.GetStore()
@@ -274,6 +278,9 @@ func CmdRunContext(parentCtx context.Context, reloadTrigger <-chan struct{}, con
 		}
 
 		logger.Setup(newSys)
+		for _, w := range ConfigWarnings(configPath, systemPath) {
+			logger.Warn("main", "Configuration warning on reload: %s", w)
+		}
 
 		newDynamicKeys := config.DiscoverCustomLabels(newInv)
 		store.RegisterDynamicLabels(newDynamicKeys)

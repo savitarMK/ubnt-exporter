@@ -15,6 +15,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses 
 
 - **`[FEATURE]` `/healthz` liveness endpoint and `ubnt-exporter health` command**: Lightweight endpoint that does not trigger metric collection. The `health` command resolves the daemon address from `system.yaml` (TCP or Unix domain socket) and exits 0/1.
 
+- **`[FEATURE]` Unknown configuration keys are reported**: Keys in `system.yaml` / `config.yaml` that match no setting (e.g. `scrape_intervall`, `pasword`) were silently ignored. `ubnt-exporter check` and `reload` now list them with file and line under a `WARNINGS` section, and the daemon logs them at startup and on reload. They remain non-fatal so existing deployments keep starting.
+- **`[FEATURE]` `ubnt_exporter_metric_emit_errors_total`**: Counts stored series that cannot be exposed (e.g. invalid UTF-8 label values) and are dropped from the scrape, which previously happened silently.
+
 ### Changed
 
 - **`[PERF]` Disabled log levels skip formatting**: The severity level is now stored atomically and `Debug`/`Info`/`Warn`/`Error` return before `fmt.Sprintf` when the level is filtered out, avoiding formatting cost for the many debug statements in the scrape path.
@@ -34,6 +37,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses 
 - **`[BUGFIX]` CEF extension escaping**: Extension values (`msg`, `sproc`, `shost`, `cs1`) now escape `\` and `=` and encode newlines as `\n`, per the CEF specification; previously `=` was left unescaped (allowing forged `key=value` pairs in SIEMs) while `|` was wrongly escaped. Header fields escape `\` and `|`.
 - **`[BUGFIX]` Invalid RFC 5424 records**: The device name was used verbatim as `MSGID`, breaking the record when it contained spaces or non-ASCII characters; it is now sanitized to 1–32 printable ASCII characters. Structured-data values escape `"`, `\` and `]`.
 - **`[BUGFIX]` Log line injection**: Messages containing newlines could forge additional records in the `text`, `syslog` and `rfc5424` formats; newlines are now flattened to spaces (JSON and CEF encode them).
+- **`[BUGFIX]` Collector panics were swallowed without a trace**: `RunCollectorTimed` recovered panics but only flipped `ubnt_exporter_collector_success`; the panic is now logged at ERROR with device name, collector and stack trace (`RunCollectorTimedContext`).
+- **`[PERF]` `/metrics` no longer blocks device scrapes**: `UbiquitiCollector.Collect` held the store read lock while sending every series to Prometheus, stalling scrape commits during slow `/metrics` reads. It now snapshots under the lock and sends after releasing it.
 - **`[BUGFIX]` Stale series for devices removed or renamed on SIGHUP reload**: `ubnt_scrape_error_total` and `ubnt_scrape_duration_seconds` were never deleted when a device left the inventory or changed its name/labels, so they were exported forever. Added `Store.PurgeDevice`, used by the reload path; failed scrapes still preserve `scrape_error` via `RemoveDeviceMetrics` (`internal/metrics/store.go`, `cli/daemon.go`).
 
 ## [v1.2.0] - 2026-11-10

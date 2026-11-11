@@ -41,10 +41,24 @@ func (c *UbiquitiCollector) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-// Collect takes a snapshot of the metric store and yields Prometheus metrics.
+// Collect takes a snapshot of the metric store and yields Prometheus metrics. The store lock
+// is released before sending, so a slow /metrics consumer never blocks device scrapes that
+// commit new values.
 func (c *UbiquitiCollector) Collect(ch chan<- prometheus.Metric) {
+	for _, m := range c.snapshot() {
+		ch <- m
+	}
+}
+
+func (c *UbiquitiCollector) snapshot() []prometheus.Metric {
 	c.store.mu.RLock()
 	defer c.store.mu.RUnlock()
+
+	total := 0
+	for _, dataPoints := range c.store.data {
+		total += len(dataPoints)
+	}
+	out := make([]prometheus.Metric, 0, total)
 
 	for key, def := range c.store.defs {
 		dataPoints, ok := c.store.data[key]
@@ -76,9 +90,13 @@ func (c *UbiquitiCollector) Collect(ch chan<- prometheus.Metric) {
 			}
 
 			m, err := prometheus.NewConstMetric(desc, valueType, metricVal, labelVals...)
-			if err == nil {
-				ch <- m
+			if err != nil {
+				// e.g. a label value that is not valid UTF-8; counted instead of failing the whole scrape
+				GetTelemetry().MetricEmitErrors.Inc()
+				continue
 			}
+			out = append(out, m)
 		}
 	}
+	return out
 }

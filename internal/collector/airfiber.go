@@ -24,7 +24,7 @@ func ProcessAF5XHD(
 	devName := getDeviceName(apLabels)
 
 	if IsCollectorEnabled(collectorsConf, "airfiber") {
-		runCollectorTimed("airfiber", func() {
+		RunCollectorTimedContext(ctx, devName, "airfiber", func() {
 			wireless, okWireless := dataRoot["wireless"].(map[string]any)
 			if !okWireless || wireless == nil {
 				logger.DebugContext(ctx, devName, "Collector 'airfiber': 'wireless' payload missing in status data")
