@@ -46,8 +46,6 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         ca-certificates \
-        curl \
-        procps \
         tzdata && \
     rm -rf /var/lib/apt/lists/* && \
     groupadd -g 1000 appgroup && \

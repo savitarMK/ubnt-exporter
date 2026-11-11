@@ -20,6 +20,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses 
 
 ### Changed
 
+- **`[CHANGE]` Slimmer runtime image**: Removed `curl` and `procps` from the runtime image (110 MB → 96 MB). The `HEALTHCHECK` uses `ubnt-exporter health` and `reload` reads `/proc` directly, so neither tool is needed; fewer packages means a smaller attack surface and fewer CVE alerts.
+- **`[CHANGE]` CI supply-chain hardening**: All GitHub Actions are pinned to full commit SHAs (with the version tag as a comment, kept current by Dependabot), and `govulncheck` is pinned to `v1.9.0` instead of `@latest`.
+- **`[CHANGE]` `golangci-lint` runs in CI**: The existing `.golangci.yml` configuration is now enforced by a dedicated `golangci-lint` (v2.15.0) job in the Security & Quality workflow.
+
 - **`[PERF]` Disabled log levels skip formatting**: The severity level is now stored atomically and `Debug`/`Info`/`Warn`/`Error` return before `fmt.Sprintf` when the level is filtered out, avoiding formatting cost for the many debug statements in the scrape path.
 
 - **`[CHANGE]` Container `HEALTHCHECK` uses `ubnt-exporter health`**: Previously `curl -f http://localhost:8000/metrics`, which ran a full metric collection every 30s and reported the container unhealthy whenever `server.port`/`server.listen` differed from `8000` or only a Unix socket was configured.

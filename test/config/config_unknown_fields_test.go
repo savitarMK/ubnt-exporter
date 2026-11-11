@@ -14,11 +14,11 @@ func TestUnknownFieldsAreReported(t *testing.T) {
 	dir := t.TempDir()
 	sys := filepath.Join(dir, "system.yaml")
 	inv := filepath.Join(dir, "config.yaml")
-	_ = os.WriteFile(sys, []byte("server:\n  port: 9100\n  scrape_intervall: 10\nlogging:\n  levle: DEBUG\n"), 0600)
+	_ = os.WriteFile(sys, []byte("server:\n  port: 9100\n  scrape_intervall: 10\nlogging:\n  log_level: DEBUG\n"), 0600)
 	_ = os.WriteFile(inv, []byte("devices:\n  - name: AP1\n    ip: 10.0.0.1\n    pasword: x\n"), 0600)
 
 	sw := config.UnknownSystemFields(sys)
-	if len(sw) != 2 || !strings.Contains(sw[0], "scrape_intervall") || !strings.Contains(sw[0], "line 3") || !strings.Contains(sw[1], "levle") {
+	if len(sw) != 2 || !strings.Contains(sw[0], "scrape_intervall") || !strings.Contains(sw[0], "line 3") || !strings.Contains(sw[1], "log_level") {
 		t.Errorf("unexpected system warnings: %v", sw)
 	}
 	iw := config.UnknownInventoryFields(inv)
