@@ -445,3 +445,11 @@ RESULT: Configuration is VALID
     Devices in Inventory: 2
     Dynamic Labels Found: [network region role sector tower]
 ```
+
+Keys that do not match any known setting (usually typos) are ignored by the loader but reported under a `WARNINGS` section, with file and line, by `check` and `reload`; the daemon also logs them at startup and on reload. Warnings do not change the exit code:
+
+```text
+WARNINGS (2):
+ - system.yaml: line 3: field scrape_intervall not found in type config.ServerConfig (ignored)
+ - config.yaml: line 4: field pasword not found in type config.DeviceConfig (ignored)
+```
