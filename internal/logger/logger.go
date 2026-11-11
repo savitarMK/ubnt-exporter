@@ -45,7 +45,7 @@ func GetTraceID(ctx context.Context) string {
 }
 
 // Level represents the severity level of a log entry.
-type Level int
+type Level int32
 
 // Log severity levels.
 const (
