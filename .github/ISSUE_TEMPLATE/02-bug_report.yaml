@@ -38,7 +38,7 @@ body:
       label: Go Runtime Version
       description: Which Go toolchain version was used to build the exporter?
       options:
-        - "1.27.3 (Official Release / Container Default)"
+        - "1.27.4 (Official Release / Container Default)"
         - "1.27.x"
         - "Other (specify inObserved Behavior)"
     validations:

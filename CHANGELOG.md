@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses explicit Prometheus release classification tags (`[CHANGE]`, `[FEATURE]`, `[ENHANCEMENT]`, `[PERF]`, `[BUGFIX]`).
 
+## [Unreleased]
+
+### Security
+
+- **`[SECURITY]` Go toolchain 1.27.3 → 1.27.4**: Fixes GO-2026-6859 (HTTP/1 server crash due to `MaxBytesReader` header race in `net/http`), reported by `govulncheck` as reachable from the exporter. Updated `go.mod`, `Dockerfile` builder image (`golang:1.27.4-bookworm`), CI workflows, and documentation.
+
 ## [v1.2.0] - 2026-11-10
 
 ### Added (`[FEATURE]`)

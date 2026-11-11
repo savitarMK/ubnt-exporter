@@ -21,7 +21,7 @@ body:
         - "internal/scraper & internal/config (HTTP/TLS Scraper, Config & Secrets Loader)"
         - "cli/ (Daemon, Diagnostics, Self-Test, Regex Query, Export)"
         - "test/ & testdata/fixtures/ (Unit Tests, Race Detector & Fixture Replay)"
-        - "Build, Dockerfile (debian:13.7-slim), Go Toolchain (1.27.3) & CI/CD Workflows"
+        - "Build, Dockerfile (debian:13.7-slim), Go Toolchain (1.27.4) & CI/CD Workflows"
     validations:
       required: true
   - type: textarea

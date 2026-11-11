@@ -211,7 +211,7 @@ Every release must pass the following checks with no unresolved findings of High
 All checks can be executed in containers matching the build environment, for example:
 
 ```bash
-docker run --rm -v "$(pwd)":/app -w /app golang:1.27.3-bookworm \
+docker run --rm -v "$(pwd)":/app -w /app golang:1.27.4-bookworm \
   sh -c 'go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...'
 ```
 

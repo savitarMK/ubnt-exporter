@@ -302,7 +302,7 @@ Output excerpt:
 --- PROMETHEUS METRICS PREVIEW ---
 # HELP ubnt_build_info Build and version information for ubnt-exporter
 # TYPE ubnt_build_info gauge
-ubnt_build_info{branch="main",goversion="go1.27.3",revision="manual",version="1.2.0"} 1
+ubnt_build_info{branch="main",goversion="go1.27.4",revision="manual",version="1.2.0"} 1
 # HELP ubnt_ap_cpu_usage_percent CPU Usage %
 # TYPE ubnt_ap_cpu_usage_percent gauge
 ubnt_ap_cpu_usage_percent{ip="192.168.1.10",name="AP-SECTOR-01",network="core",region="us-east",role="",sector="alpha",tower="tower-north"} 14

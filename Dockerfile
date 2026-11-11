@@ -1,6 +1,6 @@
 ARG APP_VERSION=1.2.0
 
-FROM --platform=$BUILDPLATFORM golang:1.27.3-bookworm AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.4-bookworm AS builder
 
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
