@@ -242,7 +242,8 @@ Flags can be specified in any order (before or after the command):
 
 | Command | Purpose | Network Activity |
 | :--- | :--- | :--- |
-| `run` | Starts the production continuous metrics daemon (`/metrics`, `/probe`, `/logs`). | Continuous daemon |
+| `run` | Starts the production continuous metrics daemon (`/metrics`, `/probe`, `/logs`, `/healthz`). | Continuous daemon |
+| `health` | Checks the local daemon `/healthz` endpoint using the listen address from `system.yaml` (TCP or Unix socket); used by the container `HEALTHCHECK`. | Local loopback `/healthz` |
 | `cli` (or `shell`) | Opens an interactive administrative console (`ubnt-cli>`) inside the container. | Interactive REPL |
 | `check` | Validates YAML syntax, Prometheus label schemas, collector names, and timeouts. | Offline (none) |
 | `show` | Dumps merged in-memory configuration with masked passwords and tokens. | Offline (none) |

@@ -388,6 +388,10 @@ func PrintCommandHelp(cmd string) {
 	case "test", "selftest":
 		fmt.Println("USAGE: ubnt-exporter test [all|metrics|collectors|connectivity|endpoint] [-t target_regex] [-f fixture.json]")
 		fmt.Println("\nRuns built-in verification and unit test suites inside the container.")
+	case "health":
+		fmt.Println("USAGE: ubnt-exporter health [-s system.yaml]")
+		fmt.Println("\nChecks the running daemon's /healthz endpoint using the listen address from system.yaml")
+		fmt.Println("(TCP or Unix domain socket). Exits 0 when healthy, 1 otherwise. Used by the container HEALTHCHECK.")
 	case "metrics":
 		fmt.Println("USAGE: ubnt-exporter metrics [-r regex]")
 		fmt.Printf("\nSearches the %d Prometheus metric definitions by name, label, or HELP description.\n", len(definitions.MetricsDef))

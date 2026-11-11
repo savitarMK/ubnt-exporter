@@ -11,7 +11,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses 
 
 - **`[SECURITY]` Go toolchain 1.27.3 → 1.27.4**: Fixes GO-2026-6859 (HTTP/1 server crash due to `MaxBytesReader` header race in `net/http`), reported by `govulncheck` as reachable from the exporter. Updated `go.mod`, `Dockerfile` builder image (`golang:1.27.4-bookworm`), CI workflows, and documentation.
 
+### Added
+
+- **`[FEATURE]` `/healthz` liveness endpoint and `ubnt-exporter health` command**: Lightweight endpoint that does not trigger metric collection. The `health` command resolves the daemon address from `system.yaml` (TCP or Unix domain socket) and exits 0/1.
+
 ### Changed
+
+- **`[CHANGE]` Container `HEALTHCHECK` uses `ubnt-exporter health`**: Previously `curl -f http://localhost:8000/metrics`, which ran a full metric collection every 30s and reported the container unhealthy whenever `server.port`/`server.listen` differed from `8000` or only a Unix socket was configured.
 
 - **`[CHANGE]` New `peer_mac` identity label on all `ubnt_peer_*` metrics** (breaking label-set change): Station series were identified only by `peer_name` + `peer_ip`; CPEs without hostname/management IP (reported as `Unknown`) or with duplicated values collapsed into a single series, silently overwriting each other. All 81 per-station metrics (including `ubnt_peer_mcs_rx_packets` / `ubnt_peer_remote_mcs_rx_packets`) now carry `peer_mac` (lower-case). `ubnt_peer_static_info` keeps `peer_mac`, now normalized to lower-case and set to `unknown-<index>` instead of `Unknown` when the station reports no MAC. Queries aggregating by `peer_name` keep working; dashboards or recording rules matching the exact label set may need updating, and existing station series are replaced by new ones after upgrade (`internal/definitions/definitions.go`, `internal/collector/peers.go`).
 
@@ -20,6 +26,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses 
 - **`[BUGFIX]` `server.port` ignored when `server.listen` is omitted**: The built-in `listen: "0.0.0.0:8000"` default was pre-seeded before decoding `system.yaml`, so a file setting only `port: 9100` still bound to `:8000`. `listen` is now derived from `port` when absent (`internal/config/config.go`).
 - **`[BUGFIX]` Enabling a single non-CEF log format failed validation**: The CEF default was pre-seeded before decoding, so `formats: { json: true }` resulted in two active formats and a *"multiple logging formats enabled"* error. CEF is now applied only when no format is enabled.
 - **`[BUGFIX]` IPv6 devices could never be scraped**: The device base URL was built as `http://fd00::1/api/v1.0` (invalid). IPv6 literals are now bracketed (`http://[fd00::1]/api/v1.0`, RFC 3986). Leading/trailing whitespace in `ip` (accepted by validation) is also trimmed before building the URL and the `ip`/`name` labels (`internal/scraper/device.go`).
+- **`[BUGFIX]` `/probe` responses cut off for slow devices**: The worst-case probe scrape (login + statistics + re-authentication, up to 40s with defaults) exceeded the server `WriteTimeout` of 10s, so the response was dropped. The write deadline is now extended per probe request (`cli/probe.go`).
+- **`[BUGFIX]` Unbounded concurrent `/probe` scrapes**: `MaxRequestsInFlight` applied to a new handler created on every request, so it never limited anything. Probes are now capped at 10 concurrent requests globally, answering `503` with `Retry-After` when saturated.
 - **`[BUGFIX]` Stale series for devices removed or renamed on SIGHUP reload**: `ubnt_scrape_error_total` and `ubnt_scrape_duration_seconds` were never deleted when a device left the inventory or changed its name/labels, so they were exported forever. Added `Store.PurgeDevice`, used by the reload path; failed scrapes still preserve `scrape_error` via `RemoveDeviceMetrics` (`internal/metrics/store.go`, `cli/daemon.go`).
 
 ## [v1.2.0] - 2026-11-10

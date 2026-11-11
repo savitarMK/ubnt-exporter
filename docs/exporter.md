@@ -84,6 +84,9 @@ GET http://exporter-host:8000/probe?target=192.168.1.10
 
 The exporter immediately initiates an isolated scrape against the specified device and returns metrics directly in the HTTP response.
 
+- The response write deadline is extended per request to cover the worst-case device scrape (login + statistics + one re-authentication, derived from `login_timeout` and `request_timeout`), so slow radios are not cut off by the server-wide write timeout. Set the Prometheus `scrape_timeout` for probe jobs accordingly.
+- At most 10 probes run concurrently across all targets; excess requests receive `503 Service Unavailable` with `Retry-After: 1` instead of queueing and overloading the radios.
+
 **Best for:**
 
 - Dynamically discovered radio fleets managed via Prometheus Service Discovery (SD).

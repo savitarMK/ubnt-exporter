@@ -42,7 +42,8 @@ The `ubnt-exporter` provides built-in diagnostic commands and structured logging
 
 | Command | Purpose | Network Activity |
 | :--- | :--- | :--- |
-| `ubnt-exporter run` | Starts the production metrics daemon (`/metrics`, `/probe`, `/logs`). | Continuous daemon |
+| `ubnt-exporter run` | Starts the production metrics daemon (`/metrics`, `/probe`, `/logs`, `/healthz`). | Continuous daemon |
+| `ubnt-exporter health` | Checks the local daemon `/healthz` endpoint (TCP or Unix socket from `system.yaml`); exits 0 when healthy. Used by the container `HEALTHCHECK`. | Local loopback `/healthz` |
 | `ubnt-exporter cli` | Opens the interactive `ubnt-cli>` diagnostic shell inside the container. | Interactive REPL |
 | `ubnt-exporter check` | Verifies YAML syntax, collector names, label regex, timeouts, and duplicate IPs. | None (offline) |
 | `ubnt-exporter show` | Dumps merged in-memory configuration with masked secrets. | None (offline) |

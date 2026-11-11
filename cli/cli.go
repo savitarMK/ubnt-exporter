@@ -65,6 +65,7 @@ func PrintHelp() {
 	fmt.Println("  diag      Interactive terminal diagnostics and RF link quality table.")
 	fmt.Println("  inspect   Deep per-collector telemetry breakdown for a target device.")
 	fmt.Println("  export    One-shot scrape for debugging and Prometheus metrics preview.")
+	fmt.Println("  health    Checks the local daemon /healthz endpoint (container HEALTHCHECK).")
 	fmt.Println("  cli       Opens the interactive administrative shell inside the container.")
 	fmt.Println("\nFLAGS:")
 	fmt.Println("  -c, --config string     Path to config.yaml (default \"config.yaml\")")
@@ -239,7 +240,7 @@ func Execute(args []string) int {
 	}
 
 	switch opts.Command {
-	case "run", "check", "show", "reload", "export", "diag", "inspect", "query", "q", "metrics", "test", "selftest", "logs", "cli", "shell":
+	case "run", "check", "show", "reload", "export", "diag", "inspect", "query", "q", "metrics", "test", "selftest", "logs", "health", "cli", "shell":
 	default:
 		logger.Error("main", "Unknown command: %s", opts.Command)
 		PrintHelp()
@@ -282,6 +283,9 @@ func Execute(args []string) int {
 		return CmdLogs(opts.SystemPath, sysConf, opts.Subcommand, opts.Lines, logFilter)
 	case "cli", "shell":
 		return CmdShell(opts.ConfigPath, opts.SystemPath)
+	case "health":
+		// Falls back to built-in defaults when system.yaml cannot be read.
+		return CmdHealth(sysConf)
 	}
 
 	offlineAllowed := (opts.FromFile != "" && (opts.Command == "export" || opts.Command == "diag" || opts.Command == "inspect" || opts.Command == "query" || opts.Command == "q" || opts.Command == "test" || opts.Command == "selftest")) ||
