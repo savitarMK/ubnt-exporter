@@ -42,7 +42,8 @@ The `ubnt-exporter` provides built-in diagnostic commands and structured logging
 
 | Command | Purpose | Network Activity |
 | :--- | :--- | :--- |
-| `ubnt-exporter run` | Starts the production metrics daemon (`/metrics`, `/probe`, `/logs`). | Continuous daemon |
+| `ubnt-exporter run` | Starts the production metrics daemon (`/metrics`, `/probe`, `/logs`, `/healthz`). | Continuous daemon |
+| `ubnt-exporter health` | Checks the local daemon `/healthz` endpoint (TCP or Unix socket from `system.yaml`); exits 0 when healthy. Used by the container `HEALTHCHECK`. | Local loopback `/healthz` |
 | `ubnt-exporter cli` | Opens the interactive `ubnt-cli>` diagnostic shell inside the container. | Interactive REPL |
 | `ubnt-exporter check` | Verifies YAML syntax, collector names, label regex, timeouts, and duplicate IPs. | None (offline) |
 | `ubnt-exporter show` | Dumps merged in-memory configuration with masked secrets. | None (offline) |
@@ -77,6 +78,9 @@ Enter the interactive diagnostic console inside a running Docker container:
 ```bash
 docker exec -it ubnt-exporter ubnt-exporter cli
 ```
+
+> [!NOTE]
+> Since v1.3.0 the container image is distroless and contains **no shell** (`docker exec … sh` / `bash` are not available). All diagnostics run through the exporter binary itself: the interactive `cli` console, `health`, `reload`, `logs`, `diag`, `inspect`, `query`, and `export`.
 
 Inside `ubnt-cli>`, run any diagnostic command directly (`test`, `check`, `logs tail -n 20`, `query signal -t AP1`, `inspect -t AP1`, `reload`, `help`, `exit`). Full `docker exec ...` lines pasted into the prompt are automatically normalized.
 
@@ -302,16 +306,16 @@ Output excerpt:
 --- PROMETHEUS METRICS PREVIEW ---
 # HELP ubnt_build_info Build and version information for ubnt-exporter
 # TYPE ubnt_build_info gauge
-ubnt_build_info{branch="main",goversion="go1.27.3",revision="manual",version="1.2.0"} 1
+ubnt_build_info{branch="main",goversion="go1.27.4",revision="manual",version="1.3.0"} 1
 # HELP ubnt_ap_cpu_usage_percent CPU Usage %
 # TYPE ubnt_ap_cpu_usage_percent gauge
 ubnt_ap_cpu_usage_percent{ip="192.168.1.10",name="AP-SECTOR-01",network="core",region="us-east",role="",sector="alpha",tower="tower-north"} 14
 # HELP ubnt_peer_signal_dbm Peer Signal
 # TYPE ubnt_peer_signal_dbm gauge
-ubnt_peer_signal_dbm{ap_ip="192.168.1.10",ap_name="AP-SECTOR-01",network="core",peer_ip="192.168.1.101",peer_name="CPE-CLIENT-01",region="us-east",role="",sector="alpha",tower="tower-north"} -58
+ubnt_peer_signal_dbm{ap_ip="192.168.1.10",ap_name="AP-SECTOR-01",network="core",peer_ip="192.168.1.101",peer_mac="00:11:22:ce:92:52",peer_name="CPE-CLIENT-01",region="us-east",role="",sector="alpha",tower="tower-north"} -58
 # HELP ubnt_peer_chain_imbalance_db Chain Imbalance
 # TYPE ubnt_peer_chain_imbalance_db gauge
-ubnt_peer_chain_imbalance_db{ap_ip="192.168.1.10",ap_name="AP-SECTOR-01",network="core",peer_ip="192.168.1.101",peer_name="CPE-CLIENT-01",region="us-east",role="",sector="alpha",tower="tower-north"} 1.2
+ubnt_peer_chain_imbalance_db{ap_ip="192.168.1.10",ap_name="AP-SECTOR-01",network="core",peer_ip="192.168.1.101",peer_mac="00:11:22:ce:92:52",peer_name="CPE-CLIENT-01",region="us-east",role="",sector="alpha",tower="tower-north"} 1.2
 ```
 
 ---
@@ -379,7 +383,7 @@ When operating in Dynamic Frequency Selection (DFS) bands (5.3 GHz and 5.4 GHz) 
 - `ubnt_ap_dfs_status`: Value `1` indicates Channel Availability Check (CAC) is currently scanning the channel before transmission can begin.
 - `ubnt_ap_dfs_cac_duration_seconds`: Configured total CAC scan duration in seconds.
 - `ubnt_ap_dfs_cac_rem_seconds`: Shows the remaining CAC countdown timer in seconds (typically 60 to 600 seconds).
-- `ubnt_ap_dfs_lockout_count`: Number of frequencies currently locked out due to radar energy detection during the mandatory 30-minute non-occupancy period.
+- `ubnt_ap_dfs_lockouts`: Number of frequencies currently locked out due to radar energy detection during the mandatory 30-minute non-occupancy period.
 
 ---
 

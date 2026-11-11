@@ -82,6 +82,10 @@ func CmdRunContext(parentCtx context.Context, reloadTrigger <-chan struct{}, con
 		return
 	}
 
+	for _, w := range ConfigWarnings(configPath, systemPath) {
+		logger.Warn("main", "Configuration warning: %s", w)
+	}
+
 	var stateMu sync.RWMutex
 	dynamicKeys := config.DiscoverCustomLabels(invConf)
 	store := metrics.GetStore()
@@ -131,55 +135,21 @@ func CmdRunContext(parentCtx context.Context, reloadTrigger <-chan struct{}, con
 			_, _ = fmt.Fprintln(w, line)
 		}
 	})
-	mux.HandleFunc("/probe", func(w http.ResponseWriter, r *http.Request) {
-		target := r.URL.Query().Get("target")
-		if target == "" {
-			http.Error(w, "'target' parameter is required (e.g. /probe?target=IP)", http.StatusBadRequest)
-			return
-		}
-
-		traceID := r.Header.Get("X-Request-ID")
-		if !IsValidTraceID(traceID) {
-			traceID = fmt.Sprintf("probe-%x", time.Now().UnixNano()%0xFFFFFF)
-		}
-		probeCtx := logger.WithTraceID(r.Context(), traceID)
-		w.Header().Set("X-Request-ID", traceID)
-
+	mux.Handle("/probe", NewProbeHandler(func() ProbeState {
 		stateMu.RLock()
-		allowedTargets := sysConf.Server.ProbeAllowedTargets
-		curScrapers := scrapers
-		curClient := client
-		curDynamicKeys := make([]string, len(dynamicKeys))
-		copy(curDynamicKeys, dynamicKeys)
-		stateMu.RUnlock()
-
-		if len(allowedTargets) > 0 && !config.IsTargetAllowed(target, allowedTargets) {
-			logger.WarnContext(probeCtx, "probe", "Forbidden probe attempt for target outside probe_allowed_targets: %s", target)
-			http.Error(w, fmt.Sprintf("target '%s' is not permitted by probe_allowed_targets", target), http.StatusForbidden)
-			return
+		defer stateMu.RUnlock()
+		keys := make([]string, len(dynamicKeys))
+		copy(keys, dynamicKeys)
+		return ProbeState{
+			Scrapers:       scrapers,
+			Client:         client,
+			AllowedTargets: sysConf.Server.ProbeAllowedTargets,
+			DynamicKeys:    keys,
 		}
-
-		var targetScraper *scraper.DeviceScraper
-		for _, s := range curScrapers {
-			if s.IP == target || s.Name == target {
-				targetScraper = s
-				break
-			}
-		}
-
-		if targetScraper == nil {
-			http.Error(w, fmt.Sprintf("target '%s' not found in inventory", target), http.StatusNotFound)
-			return
-		}
-
-		probeStore := metrics.NewStore()
-		probeStore.RegisterDynamicLabels(curDynamicKeys)
-		targetScraper.Scrape(probeCtx, curClient, probeStore, true)
-
-		probeReg := prometheus.NewRegistry()
-		probeReg.MustRegister(metrics.NewUbiquitiCollector(probeStore))
-		probeReg.MustRegister(probeStore.ScrapeDuration)
-		promhttp.HandlerFor(probeReg, promOpts).ServeHTTP(w, r)
+	}, DefaultMaxConcurrentProbes, promOpts))
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("ok\n"))
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -308,6 +278,9 @@ func CmdRunContext(parentCtx context.Context, reloadTrigger <-chan struct{}, con
 		}
 
 		logger.Setup(newSys)
+		for _, w := range ConfigWarnings(configPath, systemPath) {
+			logger.Warn("main", "Configuration warning on reload: %s", w)
+		}
 
 		newDynamicKeys := config.DiscoverCustomLabels(newInv)
 		store.RegisterDynamicLabels(newDynamicKeys)
@@ -333,7 +306,7 @@ func CmdRunContext(parentCtx context.Context, reloadTrigger <-chan struct{}, con
 			newIPSet[newSc.IP] = true
 			if prev, ok := oldByIP[newSc.IP]; ok {
 				if prev.Name != newSc.Name || !mapsEqual(prev.CustomLabels, newSc.CustomLabels) {
-					store.RemoveDeviceMetrics(prev.Name, prev.IP)
+					store.PurgeDevice(prev.Name, prev.IP)
 				}
 				if prev.Username == newSc.Username && prev.Password == newSc.Password && prev.SSL == newSc.SSL {
 					newSc.Token = prev.Token
@@ -342,7 +315,7 @@ func CmdRunContext(parentCtx context.Context, reloadTrigger <-chan struct{}, con
 		}
 		for _, oldSc := range scrapers {
 			if !newIPSet[oldSc.IP] {
-				store.RemoveDeviceMetrics(oldSc.Name, oldSc.IP)
+				store.PurgeDevice(oldSc.Name, oldSc.IP)
 			}
 		}
 		sysConf = newSys

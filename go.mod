@@ -1,6 +1,6 @@
 module ubnt-exporter
 
-go 1.27.3
+go 1.27.4
 
 godebug x509negativeserial=1
 

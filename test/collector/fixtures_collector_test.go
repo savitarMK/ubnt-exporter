@@ -211,7 +211,7 @@ func TestCollectors_Fixture_AF5XHD_PtP_Strict(t *testing.T) {
 		t.Errorf("unexpected AF5XHD split-frequency metrics: tx=%v rx=%v width_rx=%v",
 			sink.metrics["af_frequency_tx"], sink.metrics["af_frequency_rx"], sink.metrics["af_channel_width_rx"])
 	}
-	if sink.metrics["af_dl_ratio"] != 50.0 || sink.metrics["af_frame_length"] != 2.5 || sink.metrics["af_gps_sync_state"] != 0.0 || sink.metrics["af_remote_gps_sync_state"] != 0.0 {
+	if sink.metrics["af_dl_ratio"] != 50.0 || sink.metrics["af_frame_length"] != 0.0025 || sink.metrics["af_gps_sync_state"] != 0.0 || sink.metrics["af_remote_gps_sync_state"] != 0.0 {
 		t.Errorf("unexpected AF5XHD TDD sync metrics: dl_ratio=%v frame=%v gps_sync=%v rem_gps_sync=%v",
 			sink.metrics["af_dl_ratio"], sink.metrics["af_frame_length"], sink.metrics["af_gps_sync_state"], sink.metrics["af_remote_gps_sync_state"])
 	}

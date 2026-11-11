@@ -1,8 +1,8 @@
 # ubnt-exporter
 
-[![Release](https://img.shields.io/badge/version-v1.2.0-blue.svg)](VERSION)
-[![Go Version](https://img.shields.io/badge/go-1.27.3-00ADD8.svg)](go.mod)
-[![Docker Image](https://img.shields.io/badge/docker-debian%3A13.7--slim-2496ED.svg)](Dockerfile)
+[![Release](https://img.shields.io/badge/version-v1.3.0-blue.svg)](VERSION)
+[![Go Version](https://img.shields.io/badge/go-1.27.4-00ADD8.svg)](go.mod)
+[![Docker Image](https://img.shields.io/badge/docker-distroless%2Fstatic--debian13-2496ED.svg)](Dockerfile)
 [![Prometheus](https://img.shields.io/badge/prometheus-3.x%20ready-E6522C.svg)](https://prometheus.io)
 [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](LICENSE)
 
@@ -25,7 +25,7 @@ The `ubnt-exporter` gathers operational telemetry and radio metrics from Ubiquit
 
 ### Highlights
 
-- **Lightweight Runtime Footprint:** Static Go binary consuming approximately 10 to 15 MB of RAM under load, packaged in an immutable Debian 13.7 Trixie Slim container image.
+- **Lightweight Runtime Footprint:** Static Go binary consuming approximately 10 to 15 MB of RAM under load, packaged in a ~15 MB distroless (`gcr.io/distroless/static-debian13`) container image with no shell or package manager, running as UID/GID 1000.
 - **Broad Ubiquiti Hardware & TLS Compatibility:** Built-in support for both modern TLS ECDHE and legacy RSA cipher suites (`TLS_RSA_WITH_AES_*`) with TLS 1.0+ fallback, providing seamless HTTPS scraping for legacy AirMAX M-series radios (Rocket M5, NanoStation M5 on AirOS v6) as well as AirOS v8, LTU, and AirFiber devices.
 - **Worker Pool Concurrency:** Semaphore-regulated goroutine pool scaling smoothly across large inventories without socket starvation.
 - **AirOS REST Session Persistence:** Authenticates via `/api/v1.0/user/login`, reuses session tokens across cycles, and recovers transparently from expired sessions.
@@ -211,6 +211,7 @@ The `ubnt-exporter` provides native operational self-monitoring adhering to Prom
 | `ubnt_exporter_last_scrape_timestamp_seconds` | Gauge | Unix timestamp of the last completed scrape cycle. |
 | `ubnt_exporter_devices_configured` | Gauge | Number of target devices defined in `config.yaml`. |
 | `ubnt_exporter_devices_online` | Gauge | Number of devices responding successfully in the current cycle. |
+| `ubnt_exporter_metric_emit_errors_total` | Counter | Stored series dropped from the scrape because they could not be exposed (e.g. invalid UTF-8 label values). |
 | `go_*` / `process_*` | Various | Standard Go runtime memory, GC pauses, goroutine count, and process CPU/RSS metrics. |
 
 For PromQL alert examples and dashboard queries, see the [Prometheus Integration Guide](docs/exporter.md#exporter-internal-telemetry).
@@ -234,7 +235,7 @@ Flags can be specified in any order (before or after the command):
 | `--regex <pattern>` | `-r` | — | Filter metrics or log lines using semantic presets or RE2 patterns. |
 | `--from-file <path>` | `-f` | — | Replay an offline JSON statistics fixture (`--fixture`) without live network I/O. |
 | `--lines <int>` | `-n` | `50` | Number of historical log lines to display in `logs tail`. |
-| `--version` | `-v` | — | Print exporter version (`1.2.0`) and exit. |
+| `--version` | `-v` | — | Print exporter version (`1.3.0`) and exit. |
 | `--log` | `-log` | — | Display the logging reference manual and exit. |
 | `--help` | `-h` | — | Show contextual help for the application or any subcommand. |
 
@@ -242,7 +243,8 @@ Flags can be specified in any order (before or after the command):
 
 | Command | Purpose | Network Activity |
 | :--- | :--- | :--- |
-| `run` | Starts the production continuous metrics daemon (`/metrics`, `/probe`, `/logs`). | Continuous daemon |
+| `run` | Starts the production continuous metrics daemon (`/metrics`, `/probe`, `/logs`, `/healthz`). | Continuous daemon |
+| `health` | Checks the local daemon `/healthz` endpoint using the listen address from `system.yaml` (TCP or Unix socket); used by the container `HEALTHCHECK`. | Local loopback `/healthz` |
 | `cli` (or `shell`) | Opens an interactive administrative console (`ubnt-cli>`) inside the container. | Interactive REPL |
 | `check` | Validates YAML syntax, Prometheus label schemas, collector names, and timeouts. | Offline (none) |
 | `show` | Dumps merged in-memory configuration with masked passwords and tokens. | Offline (none) |
@@ -364,7 +366,7 @@ go test -v -coverpkg=./internal/... ./test/...
 To run the complete test suite inside a clean, reproducible container matching the build environment:
 
 ```bash
-docker run --rm -v "$(pwd)":/app -w /app golang:1.27.3-bookworm go test -v -buildvcs=false ./test/...
+docker run --rm -v "$(pwd)":/app -w /app golang:1.27.4-bookworm go test -v -buildvcs=false ./test/...
 ```
 
 ---

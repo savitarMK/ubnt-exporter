@@ -2,6 +2,8 @@
 package config
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -195,11 +197,28 @@ func LoadSystemConfig(filename string) (*SystemConfig, error) {
 	}
 
 	cfg := DefaultSystemConfig()
+	// server.listen and logging.formats are user choices that must not be pre-seeded:
+	// a seeded listen would shadow server.port, and a seeded CEF flag would conflict
+	// with any other single format enabled in the file. Defaults are derived after decoding.
+	cfg.Server.Listen = ""
+	cfg.Logging.Formats = FormatsConfig{}
+
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("parsing YAML in %s: %w", filename, err)
 	}
 
+	if strings.TrimSpace(cfg.Server.Listen) == "" && cfg.Server.Port > 0 {
+		cfg.Server.Listen = net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.Server.Port))
+	}
+	if !hasLogFormat(cfg.Logging.Formats) {
+		cfg.Logging.Formats.CEF = true
+	}
+
 	return cfg, nil
+}
+
+func hasLogFormat(f FormatsConfig) bool {
+	return f.CEF || f.RFC5424 || f.Syslog || f.Text || f.JSON
 }
 
 // LoadInventoryConfig reads and parses config.yaml.
@@ -273,6 +292,38 @@ func LoadInventoryConfig(filename string) (*InventoryConfig, error) {
 	return inv, nil
 }
 
+// UnknownSystemFields reports keys in a system.yaml file that do not map to any known setting
+// (typically typos such as "scrape_intervall"). The regular loader ignores them silently.
+func UnknownSystemFields(filename string) []string {
+	return unknownFields(filename, &SystemConfig{})
+}
+
+// UnknownInventoryFields reports keys in a config.yaml file that do not map to any known setting.
+func UnknownInventoryFields(filename string) []string {
+	return unknownFields(filename, &InventoryConfig{})
+}
+
+func unknownFields(filename string, target any) []string {
+	// #nosec G304 -- configuration file path is supplied by the administrator via CLI or standard search paths
+	data, err := os.ReadFile(filepath.Clean(filename))
+	if err != nil {
+		return nil
+	}
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	var typeErr *yaml.TypeError
+	if err := dec.Decode(target); !errors.As(err, &typeErr) {
+		return nil
+	}
+	var out []string
+	for _, e := range typeErr.Errors {
+		if strings.Contains(e, "not found in type") {
+			out = append(out, fmt.Sprintf("%s: %s (ignored)", filepath.Base(filename), strings.TrimSpace(e)))
+		}
+	}
+	return out
+}
+
 // ApplySystemDefaults populates missing or zero-value fields with defaults in memory.
 func ApplySystemDefaults(current *SystemConfig) *SystemConfig {
 	if current == nil {
@@ -307,9 +358,7 @@ func ApplySystemDefaults(current *SystemConfig) *SystemConfig {
 	if current.Logging.SyslogFacility == "" {
 		current.Logging.SyslogFacility = defaults.Logging.SyslogFacility
 	}
-	if !current.Logging.Formats.CEF && !current.Logging.Formats.RFC5424 &&
-		!current.Logging.Formats.Syslog && !current.Logging.Formats.Text &&
-		!current.Logging.Formats.JSON {
+	if !hasLogFormat(current.Logging.Formats) {
 		current.Logging.Formats.CEF = true
 	}
 	if current.Logging.Dampening.Threshold <= 0 {

@@ -232,3 +232,68 @@ devices:
 		t.Errorf("expected error loading missing config.yaml")
 	}
 }
+
+// Regression: server.port must drive the listen address when server.listen is omitted,
+// and an explicit server.listen must still take precedence.
+func TestLoadSystemConfigPortDrivesListen(t *testing.T) {
+	cases := []struct {
+		name     string
+		content  string
+		expected []string
+	}{
+		{"port only", "server:\n  port: 9100\n", []string{"0.0.0.0:9100"}},
+		{"no server block", "logging:\n  level: INFO\n", []string{"0.0.0.0:8000"}},
+		{"explicit listen wins", "server:\n  port: 9100\n  listen: \"127.0.0.1:9200\"\n", []string{"127.0.0.1:9200"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "system.yaml")
+			if err := os.WriteFile(p, []byte(tc.content), 0600); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := config.LoadSystemConfig(p)
+			if err != nil {
+				t.Fatalf("LoadSystemConfig failed: %v", err)
+			}
+			addrs, err := config.ParseListenAddresses(cfg.Server.Listen, cfg.Server.Port)
+			if err != nil {
+				t.Fatalf("ParseListenAddresses failed: %v", err)
+			}
+			if len(addrs) != len(tc.expected) || addrs[0] != tc.expected[0] {
+				t.Errorf("expected %v, got %v", tc.expected, addrs)
+			}
+		})
+	}
+}
+
+// Regression: enabling a single non-CEF log format must not collide with the CEF default,
+// and omitting formats entirely must still fall back to CEF.
+func TestLoadSystemConfigSingleLogFormat(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+		check   func(config.FormatsConfig) bool
+	}{
+		{"json only", "logging:\n  formats:\n    json: true\n", func(f config.FormatsConfig) bool { return f.JSON && !f.CEF }},
+		{"text only", "logging:\n  formats:\n    text: true\n", func(f config.FormatsConfig) bool { return f.Text && !f.CEF }},
+		{"formats omitted", "server:\n  port: 8000\n", func(f config.FormatsConfig) bool { return f.CEF && !f.JSON && !f.Text }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "system.yaml")
+			if err := os.WriteFile(p, []byte(tc.content), 0600); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := config.LoadSystemConfig(p)
+			if err != nil {
+				t.Fatalf("LoadSystemConfig failed: %v", err)
+			}
+			if !tc.check(cfg.Logging.Formats) {
+				t.Errorf("unexpected formats: %+v", cfg.Logging.Formats)
+			}
+			if errs := config.ValidateConfig(cfg, &config.InventoryConfig{}); len(errs) > 0 {
+				t.Errorf("expected no validation errors, got %v", errs)
+			}
+		})
+	}
+}

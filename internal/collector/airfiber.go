@@ -24,7 +24,7 @@ func ProcessAF5XHD(
 	devName := getDeviceName(apLabels)
 
 	if IsCollectorEnabled(collectorsConf, "airfiber") {
-		runCollectorTimed("airfiber", func() {
+		RunCollectorTimedContext(ctx, devName, "airfiber", func() {
 			wireless, okWireless := dataRoot["wireless"].(map[string]any)
 			if !okWireless || wireless == nil {
 				logger.DebugContext(ctx, devName, "Collector 'airfiber': 'wireless' payload missing in status data")
@@ -69,7 +69,10 @@ func ProcessAF5XHD(
 					}
 
 					addMetric("af_dl_ratio", radio, "dlRatio", apLabels)
-					addMetric("af_frame_length", radio, "frameLength", apLabels)
+					if fl, ok := radio["frameLength"]; ok && fl != nil {
+						// Device reports milliseconds; expose base unit seconds (Prometheus naming conventions).
+						store.UpdateMetric("af_frame_length", apLabels, utils.SafeFloat(fl)/1000)
+					}
 					addMetric("af_gps_sync_state", radio, "gpsSyncState", apLabels)
 					addMetric("af_rx_efficiency", radio, "rxEfficiency", apLabels)
 				}

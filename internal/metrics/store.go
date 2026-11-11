@@ -295,6 +295,41 @@ func (s *Store) RemoveDeviceMetrics(name, ip string) {
 	s.removeDeviceMetricsLocked(name, ip)
 }
 
+// PurgeDevice removes every series belonging to a device, including the scrape_error counters
+// and scrape duration histogram that RemoveDeviceMetrics intentionally preserves across failed
+// scrapes. Use it when a device leaves the inventory or its identity (name/labels) changes.
+func (s *Store) PurgeDevice(name, ip string) {
+	s.mu.Lock()
+	s.removeDeviceMetricsLocked(name, ip)
+	const errKey = "scrape_error"
+	if def, ok := s.defs[errKey]; ok {
+		nameIdx, ipIdx := -1, -1
+		for i, l := range def.Labels {
+			switch l {
+			case "name":
+				nameIdx = i
+			case "ip":
+				ipIdx = i
+			}
+		}
+		if nameIdx >= 0 && ipIdx >= 0 {
+			for compKey, lv := range s.labelsMap[errKey] {
+				if nameIdx < len(lv) && ipIdx < len(lv) && lv[nameIdx] == name && lv[ipIdx] == ip {
+					delete(s.data[errKey], compKey)
+					delete(s.labelsMap[errKey], compKey)
+				}
+			}
+			if len(s.data[errKey]) == 0 {
+				delete(s.data, errKey)
+				delete(s.labelsMap, errKey)
+			}
+		}
+	}
+	s.mu.Unlock()
+
+	s.ScrapeDuration.DeletePartialMatch(prometheus.Labels{"name": name, "ip": ip})
+}
+
 // ReplaceDeviceMetrics atomically clears previous device metrics and writes new ones in a single lock.
 func (s *Store) ReplaceDeviceMetrics(devName, devIP string, entries []MetricEntry) {
 	s.mu.Lock()

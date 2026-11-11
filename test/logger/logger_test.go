@@ -40,8 +40,9 @@ func TestLoggerFormats(t *testing.T) {
 	if !strings.Contains(msgCEF, "sproc=testDevice") {
 		t.Errorf("CEF format missing sproc component identifier: %q", msgCEF)
 	}
-	if !strings.Contains(msgCEF, `Device \| with \| pipe and   newline`) {
-		t.Errorf("CEF format failed to properly escape pipe or newline: %q", msgCEF)
+	// CEF spec: pipes need no escaping in extension values; newlines are encoded as \n.
+	if !strings.Contains(msgCEF, `msg=Device | with | pipe and \n newline`) {
+		t.Errorf("CEF format failed to properly escape extension value: %q", msgCEF)
 	}
 
 	// 3. RFC5424 format

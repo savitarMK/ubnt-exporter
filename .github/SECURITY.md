@@ -28,7 +28,7 @@ Security fixes are applied only to the latest release line. Users should always 
 | 1.1.x | Yes |
 | < 1.1 | No |
 
-Container images are rebuilt for every release so that the Debian base image includes the latest available security updates.
+Container images are built on `gcr.io/distroless/static-debian13` (no shell, no package manager; only CA certificates and the static binary), pinned by digest and kept current by Dependabot, and rebuilt for every release.
 
 ---
 
@@ -96,7 +96,7 @@ Confirmed vulnerabilities are handled through GitHub Security Advisories:
 **Out of scope:**
 
 - Vulnerabilities in Ubiquiti AirOS, LTU, or AirFiber firmware. Please report these directly to Ubiquiti.
-- Vulnerabilities in third-party Go modules or Debian packages that do not affect `ubnt-exporter` in practice. Report these upstream; we track them and update dependencies as fixes become available.
+- Vulnerabilities in third-party Go modules or base-image packages that do not affect `ubnt-exporter` in practice. Report these upstream; we track them and update dependencies as fixes become available.
 - Issues that require an attacker who already has write access to the configuration files, the host, or the container runtime.
 - Volumetric denial-of-service attacks against the network.
 - Automated scanner output without a demonstrated impact on `ubnt-exporter`.
@@ -211,7 +211,7 @@ Every release must pass the following checks with no unresolved findings of High
 All checks can be executed in containers matching the build environment, for example:
 
 ```bash
-docker run --rm -v "$(pwd)":/app -w /app golang:1.27.3-bookworm \
+docker run --rm -v "$(pwd)":/app -w /app golang:1.27.4-bookworm \
   sh -c 'go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...'
 ```
 

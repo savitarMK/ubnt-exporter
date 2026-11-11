@@ -20,7 +20,7 @@ func ProcessWireless(
 ) {
 	devName := getDeviceName(apLabels)
 
-	runCollectorTimed("wireless", func() {
+	RunCollectorTimedContext(ctx, devName, "wireless", func() {
 		labels := make(map[string]string, len(apLabels))
 		for k, v := range apLabels {
 			labels[k] = v

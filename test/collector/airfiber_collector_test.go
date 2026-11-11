@@ -142,8 +142,8 @@ func TestProcessAF5XHD(t *testing.T) {
 	if sink.metrics["af_gps_sync_state"] != 1.0 {
 		t.Errorf("expected af_gps_sync_state 1.0, got %v", sink.metrics["af_gps_sync_state"])
 	}
-	if sink.metrics["af_frame_length"] != 2.5 {
-		t.Errorf("expected af_frame_length 2.5, got %v", sink.metrics["af_frame_length"])
+	if sink.metrics["af_frame_length"] != 0.0025 {
+		t.Errorf("expected af_frame_length 0.0025 s (2.5 ms), got %v", sink.metrics["af_frame_length"])
 	}
 	if sink.metrics["af_frequency_tx"] != 5200.0 {
 		t.Errorf("expected af_frequency_tx 5200.0, got %v", sink.metrics["af_frequency_tx"])

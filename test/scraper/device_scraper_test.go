@@ -3,6 +3,7 @@ package scraper_test
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -518,5 +519,86 @@ func TestOfflineScraper_FixtureReplay(t *testing.T) {
 	}
 	if err := sc.ScrapeBytes(ctx, []byte("[]"), store, false); err == nil {
 		t.Errorf("expected error for empty JSON array")
+	}
+}
+
+// Regression: IPv6 device addresses must be bracketed in the base URL, and surrounding
+// whitespace (accepted by config validation) must not leak into the URL or the ip label.
+func TestNewDeviceScraperURLHost(t *testing.T) {
+	sslTrue := true
+	cases := []struct {
+		name    string
+		ip      string
+		ssl     *bool
+		wantURL string
+		wantIP  string
+	}{
+		{"ipv4", "10.0.0.1", nil, "http://10.0.0.1/api/v1.0", "10.0.0.1"},
+		{"ipv4 with spaces", "  10.0.0.2 ", nil, "http://10.0.0.2/api/v1.0", "10.0.0.2"},
+		{"ipv6", "fd00::1", nil, "http://[fd00::1]/api/v1.0", "fd00::1"},
+		{"ipv6 https with spaces", " 2001:db8::10 ", &sslTrue, "https://[2001:db8::10]/api/v1.0", "2001:db8::10"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sc := scraper.NewDeviceScraper(config.DeviceConfig{IP: tc.ip, SSL: tc.ssl}, config.DefaultsConfig{}, nil, nil, nil)
+			if sc.BaseURL != tc.wantURL {
+				t.Errorf("BaseURL: expected %q, got %q", tc.wantURL, sc.BaseURL)
+			}
+			if sc.IP != tc.wantIP {
+				t.Errorf("IP: expected %q, got %q", tc.wantIP, sc.IP)
+			}
+			if sc.Name != tc.wantIP {
+				t.Errorf("Name fallback: expected %q, got %q", tc.wantIP, sc.Name)
+			}
+		})
+	}
+}
+
+// Regression: a device configured with an IPv6 address must be scraped end-to-end.
+func TestScrapeIPv6Device(t *testing.T) {
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1.0/user/login":
+			w.Header().Set("X-Auth-Token", "tok")
+			w.WriteHeader(http.StatusOK)
+		case "/api/v1.0/statistics":
+			_, _ = w.Write([]byte(`{"device":{"cpu":{"usage":12},"ram":{"usage":34}}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	ln, err := net.Listen("tcp", "[::1]:0")
+	if err != nil {
+		t.Skipf("IPv6 loopback not available: %v", err)
+	}
+	ts.Listener = ln
+	ts.Start()
+	defer ts.Close()
+
+	_, port, _ := net.SplitHostPort(ln.Addr().String())
+	sc := scraper.NewDeviceScraper(config.DeviceConfig{Name: "v6", IP: "::1", Username: "u", Password: "p"}, config.DefaultsConfig{}, nil, nil, nil)
+	// The production URL has no explicit port; point it at the test server's port.
+	sc.BaseURL = strings.Replace(sc.BaseURL, "[::1]", "[::1]:"+port, 1)
+
+	store := metrics.NewStore()
+	if ok := sc.Scrape(context.Background(), scraper.NewHTTPClient(2*time.Second), store, true); !ok {
+		t.Fatalf("expected IPv6 scrape to succeed (BaseURL=%s)", sc.BaseURL)
+	}
+	if v, found := store.GetDeviceMetric("v6", "::1", "cpu_usage"); !found || v != 12 {
+		t.Errorf("expected cpu_usage 12, got %v (found=%v)", v, found)
+	}
+}
+
+// host:port (used by mock servers) must pass through unchanged; any IPv6-notation literal is bracketed.
+func TestNewDeviceScraperURLHostPassthrough(t *testing.T) {
+	cases := map[string]string{
+		"127.0.0.1:8443":  "http://127.0.0.1:8443/api/v1.0",
+		"::ffff:10.0.0.1": "http://[::ffff:10.0.0.1]/api/v1.0", // IPv4-mapped in IPv6 notation still needs brackets
+	}
+	for ip, want := range cases {
+		sc := scraper.NewDeviceScraper(config.DeviceConfig{IP: ip}, config.DefaultsConfig{}, nil, nil, nil)
+		if sc.BaseURL != want {
+			t.Errorf("%s: expected %q, got %q", ip, want, sc.BaseURL)
+		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"ubnt-exporter/internal/config"
@@ -44,7 +45,7 @@ func GetTraceID(ctx context.Context) string {
 }
 
 // Level represents the severity level of a log entry.
-type Level int
+type Level int32
 
 // Log severity levels.
 const (
@@ -114,8 +115,8 @@ type dampenRecord struct {
 // Logger is a concurrent-safe multi-format logger.
 type Logger struct {
 	mu           sync.Mutex
-	level        Level
-	format       string // "text", "cef", "rfc5424", "syslog", "json"
+	level        atomic.Int32 // Level; atomic so disabled levels can be skipped without locking
+	format       string       // "text", "cef", "rfc5424", "syslog", "json"
 	facility     int
 	hostname     string
 	pid          int
@@ -146,7 +147,6 @@ func Get() *Logger {
 			h = "localhost"
 		}
 		defaultLogger = &Logger{
-			level:           LevelInfo,
 			format:          "text",
 			facility:        1,
 			hostname:        h,
@@ -159,6 +159,7 @@ func Get() *Logger {
 			ringBuf:         make([]string, 0, 500),
 			ringMax:         500,
 		}
+		defaultLogger.level.Store(int32(LevelInfo))
 	})
 	return defaultLogger
 }
@@ -169,7 +170,7 @@ func Setup(cfg *config.SystemConfig) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	l.level = parseLevel(cfg.Logging.Level)
+	l.level.Store(int32(parseLevel(cfg.Logging.Level)))
 	l.facility = getFacilityCode(cfg.Logging.SyslogFacility)
 
 	if cfg.Logging.Formats.CEF {
@@ -298,18 +299,17 @@ func SetOutput(w io.Writer) {
 
 // SetLevel dynamically updates the logger severity threshold at runtime.
 func SetLevel(lvl string) {
-	l := Get()
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.level = parseLevel(lvl)
+	Get().level.Store(int32(parseLevel(lvl)))
 }
 
 // GetLevel returns the current log severity level.
 func GetLevel() Level {
-	l := Get()
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.level
+	return Level(Get().level.Load())
+}
+
+// Enabled reports whether messages at lvl pass the current severity threshold.
+func (l *Logger) Enabled(lvl Level) bool {
+	return lvl >= Level(l.level.Load())
 }
 
 // Close closes any open file writers and flushes logging resources.
@@ -344,21 +344,16 @@ func (l *Logger) FormatMessageContext(ctx context.Context, lvl Level, name, msg 
 		case LevelError:
 			severity = 8
 		}
-		cleanMsg := strings.ReplaceAll(msg, "\\", "\\\\")
-		cleanMsg = strings.ReplaceAll(cleanMsg, "|", `\|`)
-		cleanMsg = strings.ReplaceAll(cleanMsg, "\n", " ")
 		comp := ""
 		if name != "" {
-			cleanName := strings.ReplaceAll(name, "|", `\|`)
-			comp = fmt.Sprintf(" sproc=%s", cleanName)
+			comp = " sproc=" + cefExtValue(name)
 		}
 		extra := ""
 		if traceID != "" {
-			cleanTrace := strings.ReplaceAll(traceID, "|", `\|`)
-			extra = fmt.Sprintf(" cs1=%s cs1Label=TraceID", cleanTrace)
+			extra = " cs1=" + cefExtValue(traceID) + " cs1Label=TraceID"
 		}
 		return fmt.Sprintf("CEF:0|MatiasSegurola|UbiquitiExporter|%s|100|%s|%d|shost=%s%s msg=%s%s\n",
-			definitions.VERSION, lvlStr, severity, l.hostname, comp, cleanMsg, extra)
+			cefHeaderValue(definitions.VERSION), lvlStr, severity, cefExtValue(l.hostname), comp, cefExtValue(msg), extra)
 
 	case "rfc5424":
 		sevCode := 6
@@ -374,16 +369,12 @@ func (l *Logger) FormatMessageContext(ctx context.Context, lvl Level, name, msg 
 		}
 		pri := (l.facility * 8) + sevCode
 		timestamp := now.Format(time.RFC3339)
-		msgID := name
-		if msgID == "" {
-			msgID = "-"
-		}
 		sd := "-"
 		if traceID != "" {
-			sd = fmt.Sprintf("[trace@4711 id=%q]", traceID)
+			sd = `[trace@4711 id="` + sdParamValue(traceID) + `"]`
 		}
 		return fmt.Sprintf("<%d>1 %s %s ubnt-exporter %d %s %s %s\n",
-			pri, timestamp, l.hostname, l.pid, msgID, sd, msg)
+			pri, timestamp, l.hostname, l.pid, rfc5424MsgID(name), sd, singleLine(msg))
 
 	case "syslog":
 		sevCode := 6
@@ -405,10 +396,10 @@ func (l *Logger) FormatMessageContext(ctx context.Context, lvl Level, name, msg 
 		}
 		if traceID != "" {
 			return fmt.Sprintf("<%d>%s %s ubnt-exporter[%d]: %s[%s] %s\n",
-				pri, timestamp, l.hostname, l.pid, callerPrefix, traceID, msg)
+				pri, timestamp, l.hostname, l.pid, callerPrefix, traceID, singleLine(msg))
 		}
 		return fmt.Sprintf("<%d>%s %s ubnt-exporter[%d]: %s%s\n",
-			pri, timestamp, l.hostname, l.pid, callerPrefix, msg)
+			pri, timestamp, l.hostname, l.pid, callerPrefix, singleLine(msg))
 
 	case "json":
 		entry := struct {
@@ -440,8 +431,41 @@ func (l *Logger) FormatMessageContext(ctx context.Context, lvl Level, name, msg 
 			callerStr = fmt.Sprintf("%s [%s]", name, traceID)
 		}
 		return fmt.Sprintf("%s | %-5s | %s | %s\n",
-			now.Format("2006-01-02 15:04:05"), lvlStr, callerStr, msg)
+			now.Format("2006-01-02 15:04:05"), lvlStr, callerStr, singleLine(msg))
 	}
+}
+
+var (
+	// CEF header fields escape backslash and pipe.
+	cefHeaderEscaper = strings.NewReplacer(`\`, `\\`, "|", `\|`)
+	// CEF extension values escape backslash and equals; newlines are encoded as \n / \r.
+	cefExtEscaper = strings.NewReplacer(`\`, `\\`, "=", `\=`, "\r\n", `\n`, "\n", `\n`, "\r", `\r`)
+	// RFC 5424 SD-PARAM values escape '"', '\' and ']'.
+	sdParamEscaper = strings.NewReplacer(`\`, `\\`, `"`, `\"`, "]", `\]`)
+	// Line-oriented formats must not let message content start a forged log line.
+	newlineFlattener = strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ")
+)
+
+func cefHeaderValue(s string) string { return cefHeaderEscaper.Replace(s) }
+func cefExtValue(s string) string    { return cefExtEscaper.Replace(s) }
+func sdParamValue(s string) string   { return sdParamEscaper.Replace(s) }
+func singleLine(s string) string     { return newlineFlattener.Replace(s) }
+
+// rfc5424MsgID returns a valid RFC 5424 MSGID: 1-32 printable US-ASCII characters (33-126),
+// or the NILVALUE "-". Device names with spaces or non-ASCII characters are sanitized.
+func rfc5424MsgID(name string) string {
+	if name == "" {
+		return "-"
+	}
+	b := make([]byte, 0, 32)
+	for i := 0; i < len(name) && len(b) < 32; i++ {
+		c := name[i]
+		if c < 33 || c > 126 {
+			c = '_'
+		}
+		b = append(b, c)
+	}
+	return string(b)
 }
 
 // FormatMessage formats a log message according to the active configuration format.
@@ -454,7 +478,7 @@ func (l *Logger) LogContext(ctx context.Context, lvl Level, name, msg string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	if lvl < l.level {
+	if !l.Enabled(lvl) {
 		return
 	}
 
@@ -467,6 +491,9 @@ func (l *Logger) LogContext(ctx context.Context, lvl Level, name, msg string) {
 		key := fmt.Sprintf("%d:%s:%s", lvl, name, msg)
 		rec, exists := l.dampenMap[key]
 		if !exists {
+			if len(l.dampenMap) >= maxDampenEntries {
+				l.pruneDampenLocked(now)
+			}
 			l.dampenMap[key] = &dampenRecord{
 				caller:     name,
 				count:      1,
@@ -516,6 +543,37 @@ func (l *Logger) LogContext(ctx context.Context, lvl Level, name, msg string) {
 			l.rotateFile()
 		}
 	}
+}
+
+// maxDampenEntries bounds the dampening table: keys include the full message text, so messages
+// with variable content (durations, errors, IPs) would otherwise grow the map without limit.
+const maxDampenEntries = 1024
+
+// pruneDampenLocked drops records whose dampening window has expired and, if the table is
+// still full, evicts the least recently emitted record. Caller must hold l.mu.
+func (l *Logger) pruneDampenLocked(now time.Time) {
+	for k, rec := range l.dampenMap {
+		if now.Sub(rec.lastEmit) >= l.dampenInterval {
+			delete(l.dampenMap, k)
+		}
+	}
+	for len(l.dampenMap) >= maxDampenEntries {
+		oldestKey := ""
+		var oldest time.Time
+		for k, rec := range l.dampenMap {
+			if oldestKey == "" || rec.lastEmit.Before(oldest) {
+				oldestKey, oldest = k, rec.lastEmit
+			}
+		}
+		delete(l.dampenMap, oldestKey)
+	}
+}
+
+// DampenEntries returns the number of tracked dampening records (for diagnostics and tests).
+func (l *Logger) DampenEntries() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.dampenMap)
 }
 
 // GetRecentLogs returns up to limit recent log entries from the in-memory ring buffer,
@@ -575,22 +633,38 @@ func (l *Logger) rotateFile() {
 
 // DebugContext logs a message at LevelDebug with correlation context.
 func DebugContext(ctx context.Context, name, format string, args ...any) {
-	Get().LogContext(ctx, LevelDebug, name, fmt.Sprintf(format, args...))
+	l := Get()
+	if !l.Enabled(LevelDebug) {
+		return
+	}
+	l.LogContext(ctx, LevelDebug, name, fmt.Sprintf(format, args...))
 }
 
 // InfoContext logs a message at LevelInfo with correlation context.
 func InfoContext(ctx context.Context, name, format string, args ...any) {
-	Get().LogContext(ctx, LevelInfo, name, fmt.Sprintf(format, args...))
+	l := Get()
+	if !l.Enabled(LevelInfo) {
+		return
+	}
+	l.LogContext(ctx, LevelInfo, name, fmt.Sprintf(format, args...))
 }
 
 // WarnContext logs a message at LevelWarn with correlation context.
 func WarnContext(ctx context.Context, name, format string, args ...any) {
-	Get().LogContext(ctx, LevelWarn, name, fmt.Sprintf(format, args...))
+	l := Get()
+	if !l.Enabled(LevelWarn) {
+		return
+	}
+	l.LogContext(ctx, LevelWarn, name, fmt.Sprintf(format, args...))
 }
 
 // ErrorContext logs a message at LevelError with correlation context.
 func ErrorContext(ctx context.Context, name, format string, args ...any) {
-	Get().LogContext(ctx, LevelError, name, fmt.Sprintf(format, args...))
+	l := Get()
+	if !l.Enabled(LevelError) {
+		return
+	}
+	l.LogContext(ctx, LevelError, name, fmt.Sprintf(format, args...))
 }
 
 // Debug logs a message at LevelDebug.

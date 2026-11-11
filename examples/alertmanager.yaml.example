@@ -81,9 +81,14 @@ receivers:
     slack_configs:
       - channel: "#noc-wireless-alerts"
         send_resolved: true
-        # Alertmanager 0.32+ feature: edits existing Slack message on update rather
-        # than spamming the channel with flapping link notifications
-        edit_existing_messages: true
+        # Edit the existing Slack message on updates instead of posting a new one for every
+        # flap. Requires a Slack bot token and the chat.postMessage API (incoming webhooks
+        # cannot edit messages).
+        api_url: "https://slack.com/api/chat.postMessage"
+        http_config:
+          authorization:
+            credentials_file: "/etc/alertmanager/secrets/slack_bot_token"
+        update_message: true
         icon_emoji: ""
         title: |-
           [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }} (Tower: {{ .CommonLabels.tower | default "N/A" }})
@@ -126,7 +131,12 @@ receivers:
     slack_configs:
       - channel: "#monitoring-sre"
         send_resolved: true
-        edit_existing_messages: true
+        # Message editing (see Receiver A): bot token + chat.postMessage API required.
+        api_url: "https://slack.com/api/chat.postMessage"
+        http_config:
+          authorization:
+            credentials_file: "/etc/alertmanager/secrets/slack_bot_token"
+        update_message: true
         title: |-
           [EXPORTER {{ .Status | toUpper }}] {{ .CommonLabels.alertname }}
         text: |-

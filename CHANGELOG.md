@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses explicit Prometheus release classification tags (`[CHANGE]`, `[FEATURE]`, `[ENHANCEMENT]`, `[PERF]`, `[BUGFIX]`).
 
+## [v1.3.0] - 2026-11-10
+
+> **Upgrade note:** all `ubnt_peer_*` metrics gain the `peer_mac` label (see *Changed*). Review dashboards and recording rules that match the exact peer label set.
+
+### Security
+
+- **`[SECURITY]` Go toolchain 1.27.3 → 1.27.4**: Fixes GO-2026-6859 (HTTP/1 server crash due to `MaxBytesReader` header race in `net/http`), reported by `govulncheck` as reachable from the exporter. Updated `go.mod`, `Dockerfile` builder image (`golang:1.27.4-bookworm`), CI workflows, and documentation.
+
+### Added
+
+- **`[FEATURE]` `/healthz` liveness endpoint and `ubnt-exporter health` command**: Lightweight endpoint that does not trigger metric collection. The `health` command resolves the daemon address from `system.yaml` (TCP or Unix domain socket) and exits 0/1.
+
+- **`[FEATURE]` Unknown configuration keys are reported**: Keys in `system.yaml` / `config.yaml` that match no setting (e.g. `scrape_intervall`, `pasword`) were silently ignored. `ubnt-exporter check` and `reload` now list them with file and line under a `WARNINGS` section, and the daemon logs them at startup and on reload. They remain non-fatal so existing deployments keep starting.
+- **`[FEATURE]` `ubnt_exporter_metric_emit_errors_total`**: Counts stored series that cannot be exposed (e.g. invalid UTF-8 label values) and are dropped from the scrape, which previously happened silently.
+
+### Changed
+
+- **`[CHANGE]` Distroless runtime image** (`gcr.io/distroless/static-debian13`, pinned by digest): replaces `debian:13.7-slim`. Image size 110 MB → 14.5 MB and `trivy` findings 199 (46 HIGH, all in unused Debian base packages with no fix available) → 0. The image keeps UID/GID `1000`, so mounted log volumes keep working; time zone data is embedded in the binary (`-tags timetzdata`) so `TZ` still applies. **There is no shell in the image** (`docker exec … sh` no longer works): use the built-in `ubnt-exporter cli`, `health`, `reload` and `logs` commands. The `HEALTHCHECK` uses `ubnt-exporter health`.
+- **`[CHANGE]` CI supply-chain hardening**: All GitHub Actions are pinned to full commit SHAs (with the version tag as a comment, kept current by Dependabot), and `govulncheck` is pinned to `v1.9.0` instead of `@latest`.
+- **`[CHANGE]` `golangci-lint` runs in CI**: The existing `.golangci.yml` configuration is now enforced by a dedicated `golangci-lint` (v2.15.0) job in the Security & Quality workflow.
+
+- **`[PERF]` Disabled log levels skip formatting**: The severity level is now stored atomically and `Debug`/`Info`/`Warn`/`Error` return before `fmt.Sprintf` when the level is filtered out, avoiding formatting cost for the many debug statements in the scrape path.
+
+- **`[CHANGE]` Container `HEALTHCHECK` uses `ubnt-exporter health`**: Previously `curl -f http://localhost:8000/metrics`, which ran a full metric collection every 30s and reported the container unhealthy whenever `server.port`/`server.listen` differed from `8000` or only a Unix socket was configured.
+
+- **`[CHANGE]` New `peer_mac` identity label on all `ubnt_peer_*` metrics** (breaking label-set change): Station series were identified only by `peer_name` + `peer_ip`; CPEs without hostname/management IP (reported as `Unknown`) or with duplicated values collapsed into a single series, silently overwriting each other. All 81 per-station metrics (including `ubnt_peer_mcs_rx_packets_total` / `ubnt_peer_remote_mcs_rx_packets_total`) now carry `peer_mac` (lower-case). `ubnt_peer_static_info` keeps `peer_mac`, now normalized to lower-case and set to `unknown-<index>` instead of `Unknown` when the station reports no MAC. Queries aggregating by `peer_name` keep working; dashboards or recording rules matching the exact label set may need updating, and existing station series are replaced by new ones after upgrade (`internal/definitions/definitions.go`, `internal/collector/peers.go`).
+
+- **`[CHANGE]` Metric renames for Prometheus naming conventions** (flagged by `promtool check metrics`):
+  - `ubnt_ap_dfs_lockout_count` → `ubnt_ap_dfs_lockouts` (the `_count` suffix is reserved for histograms and summaries).
+  - `ubnt_af_frame_length_ms` → `ubnt_af_frame_length_seconds`, now in base units: the device-reported milliseconds are divided by 1000 (2.5 ms → `0.0025`). Update dashboards that displayed the raw millisecond value.
+  - All 170 exposed metric families now pass `promtool check metrics` without warnings.
+
+### Fixed
+
+- **`[BUGFIX]` `server.port` ignored when `server.listen` is omitted**: The built-in `listen: "0.0.0.0:8000"` default was pre-seeded before decoding `system.yaml`, so a file setting only `port: 9100` still bound to `:8000`. `listen` is now derived from `port` when absent (`internal/config/config.go`).
+- **`[BUGFIX]` Enabling a single non-CEF log format failed validation**: The CEF default was pre-seeded before decoding, so `formats: { json: true }` resulted in two active formats and a *"multiple logging formats enabled"* error. CEF is now applied only when no format is enabled.
+- **`[BUGFIX]` IPv6 devices could never be scraped**: The device base URL was built as `http://fd00::1/api/v1.0` (invalid). IPv6 literals are now bracketed (`http://[fd00::1]/api/v1.0`, RFC 3986). Leading/trailing whitespace in `ip` (accepted by validation) is also trimmed before building the URL and the `ip`/`name` labels (`internal/scraper/device.go`).
+- **`[BUGFIX]` `/probe` responses cut off for slow devices**: The worst-case probe scrape (login + statistics + re-authentication, up to 40s with defaults) exceeded the server `WriteTimeout` of 10s, so the response was dropped. The write deadline is now extended per probe request (`cli/probe.go`).
+- **`[BUGFIX]` Unbounded concurrent `/probe` scrapes**: `MaxRequestsInFlight` applied to a new handler created on every request, so it never limited anything. Probes are now capped at 10 concurrent requests globally, answering `503` with `Retry-After` when saturated.
+- **`[BUGFIX]` Unbounded log dampening table (slow memory leak)**: Dampening keys include the full message text, so messages with variable content (durations, error strings, IPs) added a new entry on every occurrence that was never removed. The table is now capped at 1024 entries, pruning expired windows first and then the least recently emitted record.
+- **`[BUGFIX]` CEF extension escaping**: Extension values (`msg`, `sproc`, `shost`, `cs1`) now escape `\` and `=` and encode newlines as `\n`, per the CEF specification; previously `=` was left unescaped (allowing forged `key=value` pairs in SIEMs) while `|` was wrongly escaped. Header fields escape `\` and `|`.
+- **`[BUGFIX]` Invalid RFC 5424 records**: The device name was used verbatim as `MSGID`, breaking the record when it contained spaces or non-ASCII characters; it is now sanitized to 1–32 printable ASCII characters. Structured-data values escape `"`, `\` and `]`.
+- **`[BUGFIX]` Log line injection**: Messages containing newlines could forge additional records in the `text`, `syslog` and `rfc5424` formats; newlines are now flattened to spaces (JSON and CEF encode them).
+- **`[BUGFIX]` Collector panics were swallowed without a trace**: `RunCollectorTimed` recovered panics but only flipped `ubnt_exporter_collector_success`; the panic is now logged at ERROR with device name, collector and stack trace (`RunCollectorTimedContext`).
+- **`[PERF]` `/metrics` no longer blocks device scrapes**: `UbiquitiCollector.Collect` held the store read lock while sending every series to Prometheus, stalling scrape commits during slow `/metrics` reads. It now snapshots under the lock and sends after releasing it.
+- **`[BUGFIX]` Stale series for devices removed or renamed on SIGHUP reload**: `ubnt_scrape_error_total` and `ubnt_scrape_duration_seconds` were never deleted when a device left the inventory or changed its name/labels, so they were exported forever. Added `Store.PurgeDevice`, used by the reload path; failed scrapes still preserve `scrape_error` via `RemoveDeviceMetrics` (`internal/metrics/store.go`, `cli/daemon.go`).
+
 ## [v1.2.0] - 2026-11-10
 
 ### Added (`[FEATURE]`)

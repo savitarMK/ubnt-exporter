@@ -17,7 +17,7 @@
 
 ## ℹ️ Project Overview & Contribution Philosophy
 
-`ubnt-exporter` is a high-performance Prometheus 3.x and OpenMetrics 2.0 exporter written in Go (`1.27.3`) for Ubiquiti wireless infrastructure—including **AirMAX AC (airOS v8)**, **AirMAX M-Series (airOS v6 1x1 SISO / 2x2 MIMO)**, **LTU**, and **AirFiber 5XHD**.
+`ubnt-exporter` is a high-performance Prometheus 3.x and OpenMetrics 2.0 exporter written in Go (`1.27.4`) for Ubiquiti wireless infrastructure—including **AirMAX AC (airOS v8)**, **AirMAX M-Series (airOS v6 1x1 SISO / 2x2 MIMO)**, **LTU**, and **AirFiber 5XHD**.
 
 Designed for Wireless Internet Service Providers (WISPs), telecom operators, and enterprise networks, every contribution must prioritize:
 1. **Zero-Contention Performance & Low Footprint:** Non-blocking concurrent scraping and atomic in-memory metric updates.
