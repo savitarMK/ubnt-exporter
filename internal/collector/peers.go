@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 
 	"ubnt-exporter/internal/logger"
 	"ubnt-exporter/internal/metrics"
@@ -33,7 +34,7 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 		}
 	}
 
-	for _, peerItem := range peersRaw {
+	for peerIdx, peerItem := range peersRaw {
 		peer, ok := peerItem.(map[string]any)
 		if !ok {
 			logger.DebugContext(ctx, devName, "Collector 'peers': non-object peer entry encountered")
@@ -101,6 +102,7 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 		labels["ap_ip"] = apIP
 		labels["peer_name"] = peerName
 		labels["peer_ip"] = peerMgmtIP
+		labels["peer_mac"] = peerIdentityMAC(ident["mac"], peerIdx)
 
 		addMetric := func(key string, src map[string]any, srcKey string, scale ...float64) {
 			if src == nil {
@@ -438,7 +440,6 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 		if peerModel == "Unknown" && peerProduct != "Unknown" {
 			peerModel = peerProduct
 		}
-		infoLabels["peer_mac"] = utils.CleanString(ident["mac"])
 		infoLabels["peer_product"] = peerProduct
 		infoLabels["peer_model"] = peerModel
 		infoLabels["peer_family"] = utils.CleanString(ident["family"])
@@ -458,4 +459,16 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 
 		store.UpdateMetric("peer_info", infoLabels, 1.0)
 	}
+}
+
+// peerIdentityMAC returns the normalized (lower-case) station MAC used as the unique peer
+// identity label. hostname and mgmtIp are frequently empty or duplicated on CPEs, so they
+// cannot identify a station on their own; when the MAC is missing as well, a positional
+// "unknown-<index>" placeholder keeps stations from overwriting each other's series.
+func peerIdentityMAC(raw any, idx int) string {
+	mac := strings.ToLower(utils.CleanString(raw))
+	if mac == "unknown" {
+		return fmt.Sprintf("unknown-%d", idx)
+	}
+	return mac
 }

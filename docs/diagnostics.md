@@ -308,10 +308,10 @@ ubnt_build_info{branch="main",goversion="go1.27.4",revision="manual",version="1.
 ubnt_ap_cpu_usage_percent{ip="192.168.1.10",name="AP-SECTOR-01",network="core",region="us-east",role="",sector="alpha",tower="tower-north"} 14
 # HELP ubnt_peer_signal_dbm Peer Signal
 # TYPE ubnt_peer_signal_dbm gauge
-ubnt_peer_signal_dbm{ap_ip="192.168.1.10",ap_name="AP-SECTOR-01",network="core",peer_ip="192.168.1.101",peer_name="CPE-CLIENT-01",region="us-east",role="",sector="alpha",tower="tower-north"} -58
+ubnt_peer_signal_dbm{ap_ip="192.168.1.10",ap_name="AP-SECTOR-01",network="core",peer_ip="192.168.1.101",peer_mac="00:11:22:ce:92:52",peer_name="CPE-CLIENT-01",region="us-east",role="",sector="alpha",tower="tower-north"} -58
 # HELP ubnt_peer_chain_imbalance_db Chain Imbalance
 # TYPE ubnt_peer_chain_imbalance_db gauge
-ubnt_peer_chain_imbalance_db{ap_ip="192.168.1.10",ap_name="AP-SECTOR-01",network="core",peer_ip="192.168.1.101",peer_name="CPE-CLIENT-01",region="us-east",role="",sector="alpha",tower="tower-north"} 1.2
+ubnt_peer_chain_imbalance_db{ap_ip="192.168.1.10",ap_name="AP-SECTOR-01",network="core",peer_ip="192.168.1.101",peer_mac="00:11:22:ce:92:52",peer_name="CPE-CLIENT-01",region="us-east",role="",sector="alpha",tower="tower-north"} 1.2
 ```
 
 ---

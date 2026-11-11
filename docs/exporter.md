@@ -222,7 +222,7 @@ Shared across both AirMAX (M/AC) and AirFiber / LTU radios:
 
 ### Connected Station / Peer Metrics
 
-Station metrics include the following identification labels: `ap_name`, `ap_ip`, `peer_name`, `peer_ip`.
+Station metrics include the following identification labels: `ap_name`, `ap_ip`, `peer_name`, `peer_ip`, `peer_mac`. `peer_mac` (lower-case station MAC) is the unique station identity, since `peer_name`/`peer_ip` may be empty or duplicated on CPEs; when a station reports no MAC, a positional `unknown-<index>` placeholder is used.
 
 | Metric Name | Type | Unit | Description |
 | :--- | :--- | :--- | :--- |

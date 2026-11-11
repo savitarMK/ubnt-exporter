@@ -11,6 +11,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses 
 
 - **`[SECURITY]` Go toolchain 1.27.3 → 1.27.4**: Fixes GO-2026-6859 (HTTP/1 server crash due to `MaxBytesReader` header race in `net/http`), reported by `govulncheck` as reachable from the exporter. Updated `go.mod`, `Dockerfile` builder image (`golang:1.27.4-bookworm`), CI workflows, and documentation.
 
+### Changed
+
+- **`[CHANGE]` New `peer_mac` identity label on all `ubnt_peer_*` metrics** (breaking label-set change): Station series were identified only by `peer_name` + `peer_ip`; CPEs without hostname/management IP (reported as `Unknown`) or with duplicated values collapsed into a single series, silently overwriting each other. All 81 per-station metrics (including `ubnt_peer_mcs_rx_packets` / `ubnt_peer_remote_mcs_rx_packets`) now carry `peer_mac` (lower-case). `ubnt_peer_static_info` keeps `peer_mac`, now normalized to lower-case and set to `unknown-<index>` instead of `Unknown` when the station reports no MAC. Queries aggregating by `peer_name` keep working; dashboards or recording rules matching the exact label set may need updating, and existing station series are replaced by new ones after upgrade (`internal/definitions/definitions.go`, `internal/collector/peers.go`).
+
 ### Fixed
 
 - **`[BUGFIX]` `server.port` ignored when `server.listen` is omitted**: The built-in `listen: "0.0.0.0:8000"` default was pre-seeded before decoding `system.yaml`, so a file setting only `port: 9100` still bound to `:8000`. `listen` is now derived from `port` when absent (`internal/config/config.go`).
