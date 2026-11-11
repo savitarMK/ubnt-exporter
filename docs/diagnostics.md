@@ -79,6 +79,9 @@ Enter the interactive diagnostic console inside a running Docker container:
 docker exec -it ubnt-exporter ubnt-exporter cli
 ```
 
+> [!NOTE]
+> Since v1.3.0 the container image is distroless and contains **no shell** (`docker exec … sh` / `bash` are not available). All diagnostics run through the exporter binary itself: the interactive `cli` console, `health`, `reload`, `logs`, `diag`, `inspect`, `query`, and `export`.
+
 Inside `ubnt-cli>`, run any diagnostic command directly (`test`, `check`, `logs tail -n 20`, `query signal -t AP1`, `inspect -t AP1`, `reload`, `help`, `exit`). Full `docker exec ...` lines pasted into the prompt are automatically normalized.
 
 ---

@@ -18,7 +18,7 @@ body:
       label: Deployment Environment
       description: How are you running `ubnt-exporter`?
       options:
-        - Docker / Docker Compose (debian:13.7-slim)
+        - Docker / Docker Compose (distroless/static-debian13)
         - Kubernetes Pod / DaemonSet / Deployment
         - Standalone Linux Binary / Systemd Service
         - Built from Source (local development)

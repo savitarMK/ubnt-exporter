@@ -22,7 +22,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and uses 
 
 ### Changed
 
-- **`[CHANGE]` Slimmer runtime image**: Removed `curl` and `procps` from the runtime image (110 MB → 96 MB). The `HEALTHCHECK` uses `ubnt-exporter health` and `reload` reads `/proc` directly, so neither tool is needed; fewer packages means a smaller attack surface and fewer CVE alerts.
+- **`[CHANGE]` Distroless runtime image** (`gcr.io/distroless/static-debian13`, pinned by digest): replaces `debian:13.7-slim`. Image size 110 MB → 14.5 MB and `trivy` findings 199 (46 HIGH, all in unused Debian base packages with no fix available) → 0. The image keeps UID/GID `1000`, so mounted log volumes keep working; time zone data is embedded in the binary (`-tags timetzdata`) so `TZ` still applies. **There is no shell in the image** (`docker exec … sh` no longer works): use the built-in `ubnt-exporter cli`, `health`, `reload` and `logs` commands. The `HEALTHCHECK` uses `ubnt-exporter health`.
 - **`[CHANGE]` CI supply-chain hardening**: All GitHub Actions are pinned to full commit SHAs (with the version tag as a comment, kept current by Dependabot), and `govulncheck` is pinned to `v1.9.0` instead of `@latest`.
 - **`[CHANGE]` `golangci-lint` runs in CI**: The existing `.golangci.yml` configuration is now enforced by a dedicated `golangci-lint` (v2.15.0) job in the Security & Quality workflow.
 

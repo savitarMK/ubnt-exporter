@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/badge/version-v1.3.0-blue.svg)](VERSION)
 [![Go Version](https://img.shields.io/badge/go-1.27.4-00ADD8.svg)](go.mod)
-[![Docker Image](https://img.shields.io/badge/docker-debian%3A13.7--slim-2496ED.svg)](Dockerfile)
+[![Docker Image](https://img.shields.io/badge/docker-distroless%2Fstatic--debian13-2496ED.svg)](Dockerfile)
 [![Prometheus](https://img.shields.io/badge/prometheus-3.x%20ready-E6522C.svg)](https://prometheus.io)
 [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](LICENSE)
 
@@ -25,7 +25,7 @@ The `ubnt-exporter` gathers operational telemetry and radio metrics from Ubiquit
 
 ### Highlights
 
-- **Lightweight Runtime Footprint:** Static Go binary consuming approximately 10 to 15 MB of RAM under load, packaged in an immutable Debian 13.7 Trixie Slim container image.
+- **Lightweight Runtime Footprint:** Static Go binary consuming approximately 10 to 15 MB of RAM under load, packaged in a ~15 MB distroless (`gcr.io/distroless/static-debian13`) container image with no shell or package manager, running as UID/GID 1000.
 - **Broad Ubiquiti Hardware & TLS Compatibility:** Built-in support for both modern TLS ECDHE and legacy RSA cipher suites (`TLS_RSA_WITH_AES_*`) with TLS 1.0+ fallback, providing seamless HTTPS scraping for legacy AirMAX M-series radios (Rocket M5, NanoStation M5 on AirOS v6) as well as AirOS v8, LTU, and AirFiber devices.
 - **Worker Pool Concurrency:** Semaphore-regulated goroutine pool scaling smoothly across large inventories without socket starvation.
 - **AirOS REST Session Persistence:** Authenticates via `/api/v1.0/user/login`, reuses session tokens across cycles, and recovers transparently from expired sessions.

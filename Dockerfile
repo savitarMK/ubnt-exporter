@@ -23,11 +23,18 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     BUILD_VERSION=$(tr -d '[:space:]' < VERSION) && \
     BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") && \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+        -tags timetzdata \
         -ldflags="-s -w -X 'ubnt-exporter/internal/definitions.VERSION=${BUILD_VERSION}' -X 'ubnt-exporter/internal/definitions.Revision=${GIT_REVISION}' -X 'ubnt-exporter/internal/definitions.Branch=${GIT_BRANCH}' -X 'ubnt-exporter/internal/definitions.BuildDate=${BUILD_DATE}'" \
         -trimpath \
         -o /build/ubnt-exporter ./cmd/ubnt-exporter
 
-FROM debian:13.7-slim AS runner
+# The runtime image has no shell: prepare writable directories here and copy them with ownership.
+RUN mkdir -p /rootfs/app/logs /rootfs/conf
+
+# Distroless static: no shell, no package manager, only CA certificates and /etc/passwd.
+# Time zone data is embedded in the binary (-tags timetzdata), so TZ=... keeps working.
+# Pinned by multi-arch index digest; Dependabot (docker ecosystem) keeps it current.
+FROM gcr.io/distroless/static-debian13@sha256:448810357cc8e67b7208988abdba0f5ec3d3aebee0a5b13eb624979792cffc0f AS runner
 
 ARG APP_VERSION=1.3.0
 
@@ -35,29 +42,21 @@ LABEL org.opencontainers.image.title="ubnt-exporter" \
       org.opencontainers.image.description="Prometheus exporter for Ubiquiti AirMAX (M/AC), LTU, and AirFiber devices" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.licenses="GPL-2.0-only" \
-      org.opencontainers.image.base.name="debian:13.7-slim"
+      org.opencontainers.image.base.name="gcr.io/distroless/static-debian13"
 
 ENV GOMEMLIMIT=128MiB \
-    GODEBUG=x509negativeserial=1
+    GODEBUG=x509negativeserial=1 \
+    HOME=/app
+
+COPY --from=builder --chown=1000:1000 /rootfs/ /
+COPY --from=builder /build/ubnt-exporter /usr/local/bin/ubnt-exporter
 
 WORKDIR /app
 
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        ca-certificates \
-        tzdata && \
-    rm -rf /var/lib/apt/lists/* && \
-    groupadd -g 1000 appgroup && \
-    useradd -u 1000 -g appgroup -s /usr/sbin/nologin -M appuser && \
-    mkdir -p /app/logs /conf && \
-    chown -R appuser:appgroup /app /conf
-
-COPY --from=builder /build/ubnt-exporter /usr/local/bin/ubnt-exporter
-
 EXPOSE 8000
 
-USER appuser
+# Same numeric UID/GID as previous Debian-based images, so mounted log volumes keep working.
+USER 1000:1000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD ["ubnt-exporter", "health"]
