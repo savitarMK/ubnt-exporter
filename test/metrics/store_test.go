@@ -39,7 +39,6 @@ func TestStoreOperations(t *testing.T) {
 		t.Errorf("expected cpu_usage 25.5, got %v (found: %v)", val, found)
 	}
 
-	// Remove device metrics
 	s.RemoveDeviceMetrics("AP-01", "192.168.1.20")
 
 	cpuPointsAfter := s.CountMetricDataPoints("cpu_usage")
@@ -65,7 +64,6 @@ func TestBufferBatchCommit(t *testing.T) {
 		t.Fatalf("expected 1 cpu and 1 ram point after buffer commit, got cpu=%d ram=%d", cpuPoints, ramPoints)
 	}
 
-	// Now replace with updated metrics via buffer
 	buf2 := metrics.NewBuffer()
 	buf2.UpdateMetric("cpu_usage", map[string]string{"name": "AP-02", "ip": "192.168.1.30"}, 55.0)
 	buf2.Commit(s, "AP-02", "192.168.1.30")
@@ -137,12 +135,10 @@ func TestNewStoreIsolationAndScrapeErrorPersistence(t *testing.T) {
 		t.Errorf("expected scrape_error counter to be preserved across RemoveDeviceMetrics, got %v (found: %v)", errVal, foundErr)
 	}
 
-	// Test RegisterDynamicLabels idempotency and schema change
 	isolated.RegisterDynamicLabels([]string{"tower", "sector"})
 	isolated.RegisterDynamicLabels([]string{"tower", "sector"})
 	isolated.RegisterDynamicLabels([]string{"tower", "region"})
 
-	// Test UpdateMetric and IncrementMetric on Info, Counter, and unknown keys
 	isolated.UpdateMetric("nonexistent_key", map[string]string{"name": "ISO-AP", "ip": "10.9.9.9"}, 1.0)
 	isolated.IncrementMetric("nonexistent_key", map[string]string{"name": "ISO-AP", "ip": "10.9.9.9"}, 1.0)
 	isolated.IncrementMetric("iface_rx_bytes", map[string]string{"name": "ISO-AP", "ip": "10.9.9.9", "interface": "eth0"}, 512.0)
@@ -153,7 +149,6 @@ func TestNewStoreIsolationAndScrapeErrorPersistence(t *testing.T) {
 		t.Errorf("expected peer_signal -55.0 via ap_name/ap_ip lookup, got %v (ok=%v)", sig, ok)
 	}
 
-	// Test GetDeviceMetric misses
 	if _, ok := isolated.GetDeviceMetric("ISO-AP", "10.9.9.9", "totally_unknown_key"); ok {
 		t.Errorf("expected GetDeviceMetric to return false for unknown key")
 	}
@@ -164,7 +159,6 @@ func TestNewStoreIsolationAndScrapeErrorPersistence(t *testing.T) {
 		t.Errorf("expected GetDeviceMetric to return false for mismatched IP")
 	}
 
-	// Test UbiquitiCollector Describe & Collect
 	col := metrics.NewUbiquitiCollector(isolated)
 	col.Describe(nil)
 	descCh := make(chan *prometheus.Desc, 10)
@@ -191,7 +185,6 @@ func TestNewStoreIsolationAndScrapeErrorPersistence(t *testing.T) {
 		t.Errorf("expected Prometheus 3.x Hybrid Native Histogram + Classic Buckets on ubnt_scrape_duration_seconds")
 	}
 
-	// Test empty buffer Commit and Len
 	emptyBuf := metrics.NewBuffer()
 	if emptyBuf.Len() != 0 {
 		t.Errorf("expected empty buffer Len() == 0")
@@ -199,7 +192,6 @@ func TestNewStoreIsolationAndScrapeErrorPersistence(t *testing.T) {
 	emptyBuf.Commit(nil, "ISO-AP", "10.9.9.9")
 	emptyBuf.Commit(isolated, "ISO-AP", "10.9.9.9")
 
-	// Test nil registerer
 	metrics.GetTelemetry().Register(nil)
 }
 

@@ -129,7 +129,6 @@ func FilterScrapersByTarget(scrapers []*scraper.DeviceScraper, targetPattern str
 		return scrapers, nil
 	}
 
-	// First check exact match on Name or IP
 	var exact []*scraper.DeviceScraper
 	for _, sc := range scrapers {
 		if strings.EqualFold(sc.Name, trimmed) || sc.IP == trimmed {
@@ -140,7 +139,6 @@ func FilterScrapersByTarget(scrapers []*scraper.DeviceScraper, targetPattern str
 		return exact, nil
 	}
 
-	// Dynamic RE2 compilation for pattern matching on Name, IP, or ExtraLabels
 	re, _, err := CompileUserRegex(trimmed)
 	if err != nil {
 		return nil, err

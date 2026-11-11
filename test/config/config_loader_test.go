@@ -46,7 +46,6 @@ logging:
 		t.Errorf("expected level DEBUG, got %s", cfg.Logging.Level)
 	}
 
-	// Test ApplySystemDefaults
 	emptyCfg := &config.SystemConfig{}
 	applied := config.ApplySystemDefaults(emptyCfg)
 	if applied.Server.Port != 8000 {
@@ -60,32 +59,26 @@ logging:
 func TestIsTargetAllowed(t *testing.T) {
 	allowlist := []string{"10.0.0.0/8", "192.168.1.50", "radio.internal"}
 
-	// When allowlist is empty, everything is allowed
 	if !config.IsTargetAllowed("172.16.0.1", nil) {
 		t.Errorf("expected empty allowlist to permit any target")
 	}
 
-	// Subnet match
 	if !config.IsTargetAllowed("10.1.2.3", allowlist) {
 		t.Errorf("expected 10.1.2.3 to be allowed by 10.0.0.0/8")
 	}
 
-	// Exact IP match
 	if !config.IsTargetAllowed("192.168.1.50", allowlist) {
 		t.Errorf("expected 192.168.1.50 to be allowed")
 	}
 
-	// Hostname match
 	if !config.IsTargetAllowed("radio.internal", allowlist) {
 		t.Errorf("expected radio.internal to be allowed")
 	}
 
-	// Disallowed IP
 	if config.IsTargetAllowed("192.168.1.51", allowlist) {
 		t.Errorf("expected 192.168.1.51 to be rejected")
 	}
 
-	// Disallowed outside subnet
 	if config.IsTargetAllowed("172.16.1.1", allowlist) {
 		t.Errorf("expected 172.16.1.1 to be rejected")
 	}
@@ -99,19 +92,16 @@ func TestResolveConfigPaths(t *testing.T) {
 	_ = os.WriteFile(cfg, []byte("defaults:\n"), 0600)
 	_ = os.WriteFile(sys, []byte("server:\n"), 0600)
 
-	// Test --cfg-dir override
 	rCfg, rSys := config.ResolveConfigPaths(tmpDir, "other.yaml", "other_sys.yaml")
 	if rCfg != cfg || rSys != sys {
 		t.Errorf("expected --cfg-dir to resolve to %s and %s, got %s and %s", cfg, sys, rCfg, rSys)
 	}
 
-	// Test explicit paths if existing
 	rCfg2, rSys2 := config.ResolveConfigPaths("", cfg, sys)
 	if rCfg2 != cfg || rSys2 != sys {
 		t.Errorf("expected explicit existing files to resolve, got %s and %s", rCfg2, rSys2)
 	}
 
-	// Test XDG_CONFIG_HOME fallback when custom paths do not exist
 	xdgDir := t.TempDir()
 	xdgAppDir := filepath.Join(xdgDir, "ubnt-exporter")
 	_ = os.MkdirAll(xdgAppDir, 0750)
@@ -126,14 +116,12 @@ func TestResolveConfigPaths(t *testing.T) {
 		t.Errorf("expected XDG_CONFIG_HOME paths %s and %s, got %s and %s", xdgCfg, xdgSys, rCfg3, rSys3)
 	}
 
-	// Test fallback when neither custom nor XDG exist
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, "empty_xdg"))
 	rCfg4, rSys4 := config.ResolveConfigPaths("", "nonexistent_a.yaml", "nonexistent_b.yaml")
 	if rCfg4 != "nonexistent_a.yaml" || rSys4 != "nonexistent_b.yaml" {
 		t.Errorf("expected fallback to original paths, got %s and %s", rCfg4, rSys4)
 	}
 
-	// Test EnforceSystemDefaults alias
 	enforced, err := config.EnforceSystemDefaults("", &config.SystemConfig{})
 	if err != nil || enforced.Server.Port != 8000 {
 		t.Errorf("expected EnforceSystemDefaults port 8000, got %d, err=%v", enforced.Server.Port, err)

@@ -407,7 +407,6 @@ func normalizeShellFields(fields []string) []string {
 			idx++
 		}
 		if idx < len(fields) {
-			// Skip container name
 			idx++
 		}
 		fields = fields[idx:]

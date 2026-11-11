@@ -85,7 +85,6 @@ func NewDeviceScraper(
 	}
 	baseURL := fmt.Sprintf("%s://%s/api/v1.0", protocol, urlHost(ip))
 
-	// Inherit default labels and merge with device-level overrides
 	mergedLabels := make(map[string]string, len(defaults.Labels)+len(dev.Labels))
 	for k, v := range defaults.Labels {
 		mergedLabels[k] = v
@@ -94,7 +93,6 @@ func NewDeviceScraper(
 		mergedLabels[k] = v
 	}
 
-	// Merge global collectors with device-specific collector overrides
 	effectiveModules := make(map[string]bool, len(globalEnabled)+len(dev.EnabledCollectors))
 	for k, v := range globalEnabled {
 		effectiveModules[k] = v
@@ -298,7 +296,6 @@ func (d *DeviceScraper) Scrape(ctx context.Context, client *http.Client, store *
 	statsURL := fmt.Sprintf("%s/statistics", d.BaseURL)
 	body, statusCode, err := d.fetchStatistics(ctx, client, statsURL)
 
-	// Re-authenticate if token expired (401)
 	if statusCode == http.StatusUnauthorized {
 		logger.WarnContext(ctx, d.Name, "Token expired. Re-authenticating")
 		ok, _ := d.login(ctx, client, store)

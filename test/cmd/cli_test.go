@@ -173,14 +173,12 @@ logging:
 		_ = respProbeForbidden.Body.Close()
 	}
 
-	// 6. Trigger in-process configuration reload
 	reloadCh <- struct{}{}
 	time.Sleep(200 * time.Millisecond)
 
 	cancel()
 	<-doneCh
 
-	// Test IsValidTraceID
 	if !cli.IsValidTraceID("valid-trace_123.abc") {
 		t.Errorf("expected valid trace ID")
 	}
@@ -188,7 +186,6 @@ logging:
 		t.Errorf("expected invalid trace IDs to be rejected")
 	}
 
-	// Test IsLoopbackRequest
 	reqLoopback := &http.Request{RemoteAddr: "127.0.0.1:12345"}
 	if !cli.IsLoopbackRequest(reqLoopback) {
 		t.Errorf("expected 127.0.0.1 to be recognized as loopback")
@@ -276,7 +273,6 @@ func TestCLI_LogsCommands(t *testing.T) {
 }
 
 func TestCLI_RegexPresetsAndRE2Validation(t *testing.T) {
-	// 1. Verify pre-compiled MustCompile semantic presets (Spanish & English aliases)
 	for _, alias := range []string{"signal", "señal", "cpu", "clientes", "clients", "rf", "capacidad", "trafico", "vlan", "gps", "ntp", "errores"} { //nolint:misspell // Spanish alias
 		re, desc, err := cli.CompileUserRegex(alias)
 		if err != nil || re == nil {
@@ -287,7 +283,6 @@ func TestCLI_RegexPresetsAndRE2Validation(t *testing.T) {
 		}
 	}
 
-	// 2. Verify dynamic RE2 regexp.Compile
 	re, _, err := cli.CompileUserRegex("ubnt_peer_(rx|tx)_signal_dbm")
 	if err != nil || re == nil {
 		t.Fatalf("expected valid dynamic RE2 regex, got err=%v", err)
@@ -296,7 +291,6 @@ func TestCLI_RegexPresetsAndRE2Validation(t *testing.T) {
 		t.Errorf("expected regex to match 'ubnt_peer_rx_signal_dbm'")
 	}
 
-	// 3. Verify clean error capture on unsupported RE2 lookahead (?=...) and malformed brackets
 	_, _, lookaheadErr := cli.CompileUserRegex("ubnt_(?=signal)")
 	if lookaheadErr == nil || !strings.Contains(lookaheadErr.Error(), "RE2") || !strings.Contains(lookaheadErr.Error(), "lookarounds") {
 		t.Errorf("expected descriptive RE2 lookaround error, got: %v", lookaheadErr)
@@ -309,25 +303,21 @@ func TestCLI_RegexPresetsAndRE2Validation(t *testing.T) {
 }
 
 func TestCLI_MetricsCatalogAndContextualHelp(t *testing.T) {
-	// Test metrics dictionary explorer with RE2 filter
 	code := cli.Execute([]string{"metrics", "-r", "gps|ntp"})
 	if code != 0 {
 		t.Errorf("expected exit code 0 for 'metrics -r gps|ntp', got %d", code)
 	}
 
-	// Test invalid regex in metrics command returns exit code 1 cleanly without panic
 	code = cli.Execute([]string{"metrics", "-r", "invalid(?=lookahead)"})
 	if code == 0 {
 		t.Errorf("expected non-zero exit code for invalid RE2 lookahead in metrics command")
 	}
 
-	// Test query presets listing
 	code = cli.Execute([]string{"query", "presets", "-c", "../../examples/config.yaml.example", "-s", "../../examples/system.yaml.example"})
 	if code != 0 {
 		t.Errorf("expected exit code 0 for 'query presets', got %d", code)
 	}
 
-	// Test contextual help (-h / --help) on specific subcommands and -log flag
 	for _, helpArgs := range [][]string{
 		{"query", "-h"},
 		{"inspect", "--help"},
@@ -403,7 +393,6 @@ func TestCLI_LiveMockDevice_DiagInspectExportQuery(t *testing.T) {
 		}
 	}
 
-	// Verify reload aborts cleanly when no daemon is running or config is invalid
 	if code := cli.Execute([]string{"reload", "-c", "../../examples/config.yaml.example", "-s", "../../examples/system.yaml.example"}); code == 0 {
 		t.Errorf("expected non-zero exit code for reload when no daemon is running")
 	}
@@ -411,7 +400,6 @@ func TestCLI_LiveMockDevice_DiagInspectExportQuery(t *testing.T) {
 		t.Errorf("expected non-zero exit code for reload when config has validation errors")
 	}
 
-	// Test zero matching targets and invalid target regexes across commands
 	cli.Execute([]string{"diag", "-t", "nonexistent_device", "-c", cfgPath, "-s", sysPath})
 	cli.Execute([]string{"inspect", "-t", "nonexistent_device", "-c", cfgPath, "-s", sysPath})
 	cli.Execute([]string{"export", "-t", "nonexistent_device", "-c", cfgPath, "-s", sysPath})
@@ -424,7 +412,6 @@ func TestCLI_LiveMockDevice_DiagInspectExportQuery(t *testing.T) {
 	cli.Execute([]string{"query", "signal", "-t", "invalid(?=regex)", "-c", cfgPath, "-s", sysPath})
 	cli.Execute([]string{"test", "connectivity", "-t", "invalid(?=regex)", "-c", cfgPath, "-s", sysPath})
 
-	// Verify interactive shell REPL handles pasted docker exec commands, help, and exit cleanly
 	origStdin := os.Stdin
 	rPipe, wPipe, pErr := os.Pipe()
 	if pErr == nil {
@@ -775,13 +762,11 @@ performance:
 	invConf, _ := config.LoadInventoryConfig(cfgPath)
 	invConf.Devices[0].IP = tlsHostPort
 
-	// 1. Run connectivity suite with TLS verification
 	code := cli.CmdTest(sysConf, invConf, "connectivity", "Mock-TLS-AP")
 	if code != 0 {
 		t.Errorf("expected connectivity suite over TLS to succeed, got %d", code)
 	}
 
-	// 2. CmdInspect with filter and non-matching filter
 	if c := cli.CmdInspect(sysConf, invConf, "Mock-TLS-AP", "cpu"); c != 0 {
 		t.Errorf("expected inspect with cpu filter to succeed, got %d", c)
 	}
@@ -789,12 +774,10 @@ performance:
 		t.Errorf("expected inspect with nomatch to succeed, got %d", c)
 	}
 
-	// 3. CmdExport with filter
 	if c := cli.CmdExport(sysConf, invConf, "Mock-TLS-AP", "ubnt_device_cpu"); c != 0 {
 		t.Errorf("expected export with cpu filter to succeed, got %d", c)
 	}
 
-	// 4. CmdDiag
 	if c := cli.CmdDiag(sysConf, invConf, "Mock-TLS-AP"); c != 0 {
 		t.Errorf("expected diag to succeed, got %d", c)
 	}
@@ -824,7 +807,6 @@ logging:
 	_ = os.WriteFile(sysFile, []byte(sysContent), 0600)
 	sysConf, _ := config.LoadSystemConfig(sysFile)
 
-	// Test subcommands
 	if c := cli.CmdLogs(sysFile, sysConf, "", 5, ""); c != 0 {
 		t.Errorf("expected CmdLogs empty sub to fallback to tail on file, got %d", c)
 	}
@@ -844,7 +826,6 @@ logging:
 		t.Errorf("expected CmdLogs custom sub with filter on file to succeed, got %d", c)
 	}
 
-	// Address resolution variations
 	for _, listen := range []string{":8000", "0.0.0.0:8000", "[::]:8000", "192.168.1.100:8000", "invalid"} {
 		sysConf.Server.Listen = listen
 		_ = cli.CmdLogs(sysFile, sysConf, "tail", 1, "")
@@ -856,7 +837,6 @@ func TestCLI_OfflineFixtureReplay(t *testing.T) {
 	mFixturePath := "../../testdata/fixtures/airmax_m_ptmp.json"
 	afFixturePath := "../../testdata/fixtures/af5xhd_ptp.json"
 
-	// 1. Offline replay without requiring config.yaml or system.yaml
 	for _, args := range [][]string{
 		{"diag", "-f", fixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
 		{"diag", "-f", mFixturePath, "-c", "/nonexistent/config.yaml", "-s", "/nonexistent/system.yaml"},
@@ -879,12 +859,10 @@ func TestCLI_OfflineFixtureReplay(t *testing.T) {
 		}
 	}
 
-	// 2. Offline replay with inventory device target matching
 	if code := cli.Execute([]string{"inspect", "-f", fixturePath, "-t", "AP-SECTOR-01", "-c", "../../examples/config.yaml.example", "-s", "../../examples/system.yaml.example"}); code != 0 {
 		t.Errorf("expected offline inspect with matching inventory target to succeed, got %d", code)
 	}
 
-	// 3. Error cases: nonexistent fixture file on diag, inspect, export, query, test
 	for _, cmd := range [][]string{
 		{"diag", "-f", "/nonexistent/fixture.json"},
 		{"inspect", "-f", "/nonexistent/fixture.json"},

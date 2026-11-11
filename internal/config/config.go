@@ -532,7 +532,6 @@ func ValidateConfig(sys *SystemConfig, inv *InventoryConfig) []string {
 		return errs
 	}
 
-	// 1. Server validation
 	if sys.Server.Port < 1 || sys.Server.Port > 65535 {
 		errs = append(errs, fmt.Sprintf("invalid server.port: %d (must be 1-65535)", sys.Server.Port))
 	}
@@ -561,7 +560,6 @@ func ValidateConfig(sys *SystemConfig, inv *InventoryConfig) []string {
 		}
 	}
 
-	// 2. Performance validation
 	if sys.Performance.MaxWorkers < 1 {
 		errs = append(errs, fmt.Sprintf("invalid performance.max_workers: %d (must be >= 1)", sys.Performance.MaxWorkers))
 	}
@@ -581,7 +579,6 @@ func ValidateConfig(sys *SystemConfig, inv *InventoryConfig) []string {
 		errs = append(errs, fmt.Sprintf("invalid performance.failure_backoff: %d (must be >= 0s)", sys.Performance.FailureBackoff))
 	}
 
-	// 3. Logging validation
 	lvl := strings.ToUpper(strings.TrimSpace(sys.Logging.Level))
 	if lvl != "" {
 		if _, ok := ValidLogLevels[lvl]; !ok {
@@ -641,7 +638,6 @@ func ValidateConfig(sys *SystemConfig, inv *InventoryConfig) []string {
 		errs = append(errs, "both logging.console and logging.file are disabled; no log output would be produced")
 	}
 
-	// 4. Inventory validation
 	if inv == nil {
 		errs = append(errs, "config.yaml is empty or missing")
 		return errs
@@ -733,12 +729,10 @@ func ResolveConfigPaths(cfgDir, customConfig, customSystem string) (string, stri
 	cfgPath := customConfig
 	sysPath := customSystem
 
-	// If explicit paths already exist on disk, return them directly
 	if fileExists(cfgPath) || fileExists(sysPath) {
 		return cfgPath, sysPath
 	}
 
-	// Check XDG standard configuration directory
 	xdgHome := os.Getenv("XDG_CONFIG_HOME")
 	if xdgHome == "" {
 		if home, err := os.UserHomeDir(); err == nil {
@@ -753,7 +747,6 @@ func ResolveConfigPaths(cfgDir, customConfig, customSystem string) (string, stri
 		}
 	}
 
-	// Check system-wide /etc/ubnt-exporter
 	etcCfg := "/etc/ubnt-exporter/config.yaml"
 	etcSys := "/etc/ubnt-exporter/system.yaml"
 	if fileExists(etcCfg) && fileExists(etcSys) {
@@ -783,14 +776,12 @@ func IsTargetAllowed(target string, allowedList []string) bool {
 		if entry == "" {
 			continue
 		}
-		// Check CIDR
 		if strings.Contains(entry, "/") {
 			_, ipNet, err := net.ParseCIDR(entry)
 			if err == nil && targetIP != nil && ipNet.Contains(targetIP) {
 				return true
 			}
 		} else {
-			// Exact IP or hostname match
 			if targetIP != nil && net.ParseIP(entry) != nil {
 				if targetIP.Equal(net.ParseIP(entry)) {
 					return true

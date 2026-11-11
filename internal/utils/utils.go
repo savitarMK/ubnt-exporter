@@ -84,7 +84,6 @@ func DetectDeviceFamily(dataRoot any) string {
 		return "unknown"
 	}
 
-	// Check device.identification.model
 	if dev, ok := rootMap["device"].(map[string]any); ok {
 		if ident, ok := dev["identification"].(map[string]any); ok {
 			model := strings.ToLower(fmt.Sprintf("%v", ident["model"]))
@@ -94,7 +93,6 @@ func DetectDeviceFamily(dataRoot any) string {
 		}
 	}
 
-	// Check wireless.radios[0].frequency.tx
 	if wireless, ok := rootMap["wireless"].(map[string]any); ok {
 		if radios, ok := wireless["radios"].([]any); ok && len(radios) > 0 {
 			if r0, ok := radios[0].(map[string]any); ok {

@@ -197,7 +197,6 @@ func Setup(cfg *config.SystemConfig) {
 	l.dampenInterval = time.Duration(intervalSec) * time.Second
 	l.dampenMap = make(map[string]*dampenRecord)
 
-	// Close existing file writer if any
 	if l.fileWriter != nil {
 		_ = l.fileWriter.Close()
 		l.fileWriter = nil
@@ -536,7 +535,6 @@ func (l *Logger) LogContext(ctx context.Context, lvl Level, name, msg string) {
 		_, _ = w.Write(b)
 	}
 
-	// Check file rotation if file writer is active
 	if l.fileWriter != nil && l.fileMaxSize > 0 {
 		l.fileCurBytes += int64(len(b))
 		if l.fileCurBytes >= l.fileMaxSize {
@@ -622,7 +620,6 @@ func (l *Logger) rotateFile() {
 	if err == nil {
 		l.fileWriter = f
 		l.fileCurBytes = 0
-		// Update writer list
 		for idx, w := range l.writers {
 			if _, ok := w.(*os.File); ok && w != os.Stdout {
 				l.writers[idx] = f

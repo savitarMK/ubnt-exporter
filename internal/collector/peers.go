@@ -224,7 +224,6 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 			}
 		}
 
-		// Local ideal chain signals
 		if idealChainsLoc, ok := localLQ["idealSignalPerChain"].([]any); ok && len(idealChainsLoc) >= 2 {
 			ic0 := utils.SafeFloat(idealChainsLoc[0])
 			ic1 := utils.SafeFloat(idealChainsLoc[1])
@@ -253,7 +252,6 @@ func ProcessPeers(ctx context.Context, dataRoot map[string]any, apLabels map[str
 			}
 		}
 
-		// Remote ideal chain signals
 		if idealChainsRem, ok := remoteLQ["idealSignalPerChain"].([]any); ok && len(idealChainsRem) >= 2 {
 			ric0 := utils.SafeFloat(idealChainsRem[0])
 			ric1 := utils.SafeFloat(idealChainsRem[1])

@@ -11,18 +11,14 @@ import (
 func TestExporterTelemetryRecording(t *testing.T) {
 	tel := metrics.NewExporterTelemetry()
 
-	// Test RecordCollector
 	tel.RecordCollector("system", 15*time.Millisecond, true)
 	tel.RecordCollector("system", 20*time.Millisecond, false)
 
-	// Test RecordScrapeResult
 	tel.RecordScrapeResult("success")
 	tel.RecordScrapeResult("timeout")
 
-	// Test SetScrapeCycle
 	tel.SetScrapeCycle(500*time.Millisecond, 10, 8)
 
-	// Test Register with a fresh registry
 	reg := prometheus.NewRegistry()
 	tel.Register(reg)
 

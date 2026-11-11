@@ -187,7 +187,6 @@ func cmdLogsTest(sysConf *config.SystemConfig) int {
 		fmt.Printf("\n[%s]\n  %s\n", f.name, out)
 	}
 
-	// Restore active configuration
 	logger.Setup(sysConf)
 	fmt.Println("\n[Active Configuration Verification]")
 	fmt.Printf("  Level  : %s\n", strings.ToUpper(sysConf.Logging.Level))
@@ -225,7 +224,6 @@ func cmdLogsTail(sysConf *config.SystemConfig, limit int, filter string) int {
 		return 0
 	}
 
-	// Fallback to log file if file logging is enabled
 	if sysConf != nil && sysConf.Logging.File.Enabled && sysConf.Logging.File.Path != "" {
 		fileLines, fErr := readTailFromFile(sysConf.Logging.File.Path, limit, filter)
 		if fErr == nil {

@@ -94,7 +94,6 @@ func NewExporterTelemetry() *ExporterTelemetry {
 		),
 	}
 
-	// Initialize known collector success gauges to 1
 	for _, c := range []string{"system", "interfaces", "wireless", "airfiber", "peers"} {
 		t.CollectorSuccess.WithLabelValues(c).Set(1)
 	}

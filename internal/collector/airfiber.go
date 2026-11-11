@@ -46,7 +46,6 @@ func ProcessAF5XHD(
 				}
 			}
 
-			// 1. AirFiber-exclusive local radio parameters
 			if len(radios) > 0 {
 				if radio, ok := radios[0].(map[string]any); ok {
 					if freqData, ok := radio["frequency"].(map[string]any); ok && freqData != nil {
@@ -78,7 +77,6 @@ func ProcessAF5XHD(
 				}
 			}
 
-			// 2. AirFiber-exclusive remote backhaul parameters
 			if len(peers) > 0 {
 				if peer, ok := peers[0].(map[string]any); ok {
 					if remoteList, ok := peer["remote"].([]any); ok && len(remoteList) > 0 {
