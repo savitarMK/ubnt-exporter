@@ -336,7 +336,7 @@ logging:
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `port` | integer | `8000` | Primary TCP port for HTTP metrics serving (1-65535). |
-| `listen` | string | `"0.0.0.0:8000"` | Listening socket address. Supports multiple whitespace-separated endpoints, IPv6 addresses, and Unix domain sockets. |
+| `listen` | string | `"0.0.0.0:<port>"` | Listening socket address. Supports multiple whitespace-separated endpoints, IPv6 addresses, and Unix domain sockets. When omitted, it is derived from `port`; when set, it takes precedence over `port`. |
 | `scrape_interval` | integer | `30` | Interval in seconds between automated daemon scrape cycles (minimum: 1). |
 | `probe_allowed_targets` | string list | `[]` | List of allowed IP subnets (CIDR notation) or hostnames permitted for multi-target scraping via `/probe`. When empty, only devices defined in `config.yaml` can be probed. |
 
@@ -380,7 +380,7 @@ Prometheus can scrape Unix Domain Sockets directly using the `http_sd_configs` o
 | :--- | :--- | :--- | :--- |
 | `level` | string | `"INFO"` | Logging verbosity: `DEBUG`, `INFO`, `WARN`, `WARNING`, or `ERROR`. |
 | `syslog_facility` | string | `"local0"` | Standard Syslog facility name for enterprise SIEM routing. |
-| `formats` | map | `cef: true` | Structured format toggle: `cef`, `rfc5424`, `syslog`, `json`, or `text` (only one active at a time). |
+| `formats` | map | `cef: true` | Structured format toggle: `cef`, `rfc5424`, `syslog`, `json`, or `text` (only one active at a time). Enabling just one (e.g. `json: true`) is enough; CEF is used only when none is enabled. |
 | `console` | boolean | `true` | Output formatted log messages to `stdout`. |
 | `file.enabled` | boolean | `false` | Enable output to an append-only log file. |
 | `file.path` | string | `"logs/app.log"` | Filesystem destination for log output. |

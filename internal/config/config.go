@@ -195,11 +195,28 @@ func LoadSystemConfig(filename string) (*SystemConfig, error) {
 	}
 
 	cfg := DefaultSystemConfig()
+	// server.listen and logging.formats are user choices that must not be pre-seeded:
+	// a seeded listen would shadow server.port, and a seeded CEF flag would conflict
+	// with any other single format enabled in the file. Defaults are derived after decoding.
+	cfg.Server.Listen = ""
+	cfg.Logging.Formats = FormatsConfig{}
+
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("parsing YAML in %s: %w", filename, err)
 	}
 
+	if strings.TrimSpace(cfg.Server.Listen) == "" && cfg.Server.Port > 0 {
+		cfg.Server.Listen = net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.Server.Port))
+	}
+	if !hasLogFormat(cfg.Logging.Formats) {
+		cfg.Logging.Formats.CEF = true
+	}
+
 	return cfg, nil
+}
+
+func hasLogFormat(f FormatsConfig) bool {
+	return f.CEF || f.RFC5424 || f.Syslog || f.Text || f.JSON
 }
 
 // LoadInventoryConfig reads and parses config.yaml.
@@ -307,9 +324,7 @@ func ApplySystemDefaults(current *SystemConfig) *SystemConfig {
 	if current.Logging.SyslogFacility == "" {
 		current.Logging.SyslogFacility = defaults.Logging.SyslogFacility
 	}
-	if !current.Logging.Formats.CEF && !current.Logging.Formats.RFC5424 &&
-		!current.Logging.Formats.Syslog && !current.Logging.Formats.Text &&
-		!current.Logging.Formats.JSON {
+	if !hasLogFormat(current.Logging.Formats) {
 		current.Logging.Formats.CEF = true
 	}
 	if current.Logging.Dampening.Threshold <= 0 {
