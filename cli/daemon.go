@@ -333,7 +333,7 @@ func CmdRunContext(parentCtx context.Context, reloadTrigger <-chan struct{}, con
 			newIPSet[newSc.IP] = true
 			if prev, ok := oldByIP[newSc.IP]; ok {
 				if prev.Name != newSc.Name || !mapsEqual(prev.CustomLabels, newSc.CustomLabels) {
-					store.RemoveDeviceMetrics(prev.Name, prev.IP)
+					store.PurgeDevice(prev.Name, prev.IP)
 				}
 				if prev.Username == newSc.Username && prev.Password == newSc.Password && prev.SSL == newSc.SSL {
 					newSc.Token = prev.Token
@@ -342,7 +342,7 @@ func CmdRunContext(parentCtx context.Context, reloadTrigger <-chan struct{}, con
 		}
 		for _, oldSc := range scrapers {
 			if !newIPSet[oldSc.IP] {
-				store.RemoveDeviceMetrics(oldSc.Name, oldSc.IP)
+				store.PurgeDevice(oldSc.Name, oldSc.IP)
 			}
 		}
 		sysConf = newSys

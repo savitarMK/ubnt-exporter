@@ -202,3 +202,43 @@ func TestNewStoreIsolationAndScrapeErrorPersistence(t *testing.T) {
 	// Test nil registerer
 	metrics.GetTelemetry().Register(nil)
 }
+
+// Regression: devices removed or renamed on reload must not leave scrape_error counters or
+// scrape duration histogram series behind, while other devices keep theirs intact.
+func TestStorePurgeDevice(t *testing.T) {
+	s := metrics.NewStore()
+	s.RegisterDynamicLabels([]string{"site"})
+
+	for _, d := range []struct{ name, ip string }{{"old", "10.0.0.1"}, {"keep", "10.0.0.2"}} {
+		base := map[string]string{"name": d.name, "ip": d.ip, "site": "a"}
+		s.UpdateMetric("cpu_usage", base, 10)
+		for _, reason := range []string{"timeout", "auth_failed"} {
+			s.IncrementMetric("scrape_error", map[string]string{"name": d.name, "ip": d.ip, "site": "a", "reason": reason}, 1)
+		}
+		s.ScrapeDuration.WithLabelValues(d.name, d.ip).Observe(0.3)
+	}
+
+	// RemoveDeviceMetrics (used on failed scrapes) must keep the error counters.
+	s.RemoveDeviceMetrics("old", "10.0.0.1")
+	if got := s.CountMetricDataPoints("scrape_error"); got != 4 {
+		t.Fatalf("RemoveDeviceMetrics must preserve scrape_error, got %d series", got)
+	}
+
+	s.PurgeDevice("old", "10.0.0.1")
+
+	if got := s.CountMetricDataPoints("scrape_error"); got != 2 {
+		t.Errorf("expected 2 scrape_error series (only 'keep'), got %d", got)
+	}
+	if _, ok := s.GetDeviceMetric("keep", "10.0.0.2", "scrape_error"); !ok {
+		t.Error("scrape_error of untouched device must be preserved")
+	}
+	if _, ok := s.GetDeviceMetric("keep", "10.0.0.2", "cpu_usage"); !ok {
+		t.Error("cpu_usage of untouched device must be preserved")
+	}
+	ch := make(chan prometheus.Metric, 16)
+	s.ScrapeDuration.Collect(ch)
+	close(ch)
+	if got := len(ch); got != 1 {
+		t.Errorf("expected 1 scrape duration histogram series after purge, got %d", got)
+	}
+}
