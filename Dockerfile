@@ -34,7 +34,7 @@ RUN mkdir -p /rootfs/app/logs /rootfs/conf
 # Distroless static: no shell, no package manager, only CA certificates and /etc/passwd.
 # Time zone data is embedded in the binary (-tags timetzdata), so TZ=... keeps working.
 # Pinned by multi-arch index digest; Dependabot (docker ecosystem) keeps it current.
-FROM gcr.io/distroless/static-debian13@sha256:1a64f46364620465ef9e9a8f5413757dfdf22695e050bbfd7303eeaf17a59383 AS runner
+FROM gcr.io/distroless/static-debian13@sha256:4c2cd1dee442c9a99924a378c7c126fac8fef14771579ef567c3f2bdd7a5122a AS runner
 
 ARG APP_VERSION=2.0.0
 
